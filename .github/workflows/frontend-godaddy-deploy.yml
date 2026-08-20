@@ -32,4 +32,3 @@ jobs:
           protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/app/
-          dangerous-clean-slate: true
