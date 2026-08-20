@@ -4,30 +4,18 @@ import {
   Reply, Edit3, Plus, Camera, Pin, X, Send, Link2, Trash2
 } from 'lucide-react';
 
-const pollCardStyle = {
-  background: 'var(--bg-primary)',
-  border: '1px solid var(--border-color)',
-  borderRadius: '16px',
-  padding: '16px',
-  minWidth: '280px',
-  maxWidth: '70%',
-  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-  marginBottom: '4px'
-};
-
+const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
 const pollHeaderStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' };
 const pollTitleStyle = { fontSize: '14px', fontWeight: '700', color: 'var(--text-main)', margin: 0 };
 const pollOptionsStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
 const pollOptionStyle = { position: 'relative', background: 'var(--bg-directory)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '13px', cursor: 'pointer', overflow: 'hidden', textAlign: 'left', width: '100%' };
 const pollFooterStyle = { marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-light)' };
 
-export default function ChatCanvas({
-  selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing,
-  composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite
-}) {
+export default function ChatCanvas({ selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing, composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite }) {
   const historyRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
   const [groupActionMessage, setGroupActionMessage] = useState('');
+  const [pollVoteState, setPollVoteState] = useState({});
 
   useEffect(() => {
     const viewport = historyRef.current;
@@ -37,6 +25,7 @@ export default function ChatCanvas({
 
   useEffect(() => {
     setGroupActionMessage('');
+    setPollVoteState({});
   }, [selectedChat?.id]);
 
   const handleHistoryScroll = () => {
@@ -53,11 +42,8 @@ export default function ChatCanvas({
         method: 'POST',
         body: JSON.stringify({ poll_id: Number(pollId), option_id: Number(optionId) })
       });
-
       if (response?.options) {
-        window.dispatchEvent(new CustomEvent('cloudcomai-poll-vote', {
-          detail: { pollId: Number(pollId), options: response.options }
-        }));
+        setPollVoteState(prev => ({ ...prev, [pollId]: response.options }));
       }
     } catch (err) {
       alert(err.message || 'Failed to submit vote.');
@@ -73,14 +59,9 @@ export default function ChatCanvas({
         {selectedChat ? (
           <div className="active-interlocutor-card">
             <div className="avatar-frame small"><div className="avatar-placeholder">{selectedChat.name ? selectedChat.name[0] : '?'}</div></div>
-            <div className="interlocutor-details">
-              <h4>{selectedChat.name}</h4>
-              <p className="presence-subtext">{isGroup ? 'Group' : selectedChat.online ? 'Online' : 'Offline'}</p>
-            </div>
+            <div className="interlocutor-details"><h4>{selectedChat.name}</h4><p className="presence-subtext">{isGroup ? 'Group' : selectedChat.online ? 'Online' : 'Offline'}</p></div>
           </div>
-        ) : (
-          <div className="active-interlocutor-card"><h4>Select a conversation to begin</h4></div>
-        )}
+        ) : <div className="active-interlocutor-card"><h4>Select a conversation to begin</h4></div>}
 
         <div className="canvas-action-utilities">
           <button className="action-utility-btn" onClick={() => setModal('audio')}><Phone size={18}/><span>Audio Call</span></button>
@@ -88,33 +69,16 @@ export default function ChatCanvas({
           <button className="action-utility-btn" onClick={() => setModal('poll')}><BarChart3 size={18}/><span>New Poll</span></button>
           <button className="action-utility-btn" onClick={() => setModal('location')}><MapPin size={18}/><span>Share Location</span></button>
 
-          {isGroup ? (
-            <>
-              <button className="action-utility-btn" style={{ color: '#10b981' }} onClick={() => setModal('add_member')}><Plus size={16}/><span>Add Member</span></button>
-              <button className="action-utility-btn" onClick={() => setModal('manage_members')}><Users size={16}/><span>Manage</span></button>
-              {isGroupOwner && <>
-                <button className="action-utility-btn" onClick={async () => {
-                  try {
-                    const response = await onGroupInvite(selectedChat);
-                    if (response?.invite_url) {
-                      await navigator.clipboard.writeText(response.invite_url);
-                      setGroupActionMessage('Group link copied');
-                      setTimeout(() => setGroupActionMessage(''), 1600);
-                    }
-                  } catch (err) {
-                    setGroupActionMessage(err.message || 'Unable to generate group link');
-                  }
-                }}><Link2 size={16}/><span>Copy Link</span></button>
-                <button className="action-utility-btn text-red" style={{ color: '#ef4444' }} onClick={() => onDeleteGroup(selectedChat)}><Trash2 size={16}/><span>Delete Group</span></button>
-              </>}
-            </>
-          ) : (
-            <button className="action-utility-btn" onClick={() => setModal('group')}><Users size={18}/><span>New Group</span></button>
-          )}
+          {isGroup ? <>
+            <button className="action-utility-btn" style={{ color: '#10b981' }} onClick={() => setModal('add_member')}><Plus size={16}/><span>Add Member</span></button>
+            <button className="action-utility-btn" onClick={() => setModal('manage_members')}><Users size={16}/><span>Manage</span></button>
+            {isGroupOwner && <>
+              <button className="action-utility-btn" onClick={async () => { try { const response = await onGroupInvite(selectedChat); if (response?.invite_url) { await navigator.clipboard.writeText(response.invite_url); setGroupActionMessage('Group link copied'); setTimeout(() => setGroupActionMessage(''), 1600); } } catch (err) { setGroupActionMessage(err.message || 'Unable to generate group link'); } }}><Link2 size={16}/><span>Copy Link</span></button>
+              <button className="action-utility-btn text-red" style={{ color: '#ef4444' }} onClick={() => onDeleteGroup(selectedChat)}><Trash2 size={16}/><span>Delete Group</span></button>
+            </>}
+          </> : <button className="action-utility-btn" onClick={() => setModal('group')}><Users size={18}/><span>New Group</span></button>}
 
-          <div className="vertical-divider" />
-          <button className="icon-utility-only"><Search size={18}/></button>
-          <button className="icon-utility-only"><MoreHorizontal size={18}/></button>
+          <div className="vertical-divider" /><button className="icon-utility-only"><Search size={18}/></button><button className="icon-utility-only"><MoreHorizontal size={18}/></button>
         </div>
       </header>
 
@@ -123,56 +87,30 @@ export default function ChatCanvas({
       <div className="message-history-viewport" ref={historyRef} onScroll={handleHistoryScroll}>
         <div className="encryption-note">Messages are protected in transit. E2EE configuration applied.</div>
 
-        {messages.map((msg) => {
+        {messages.map(msg => {
           const isMine = msg.sender_id == user?.id || msg.user_id == user?.id || msg.mine === true;
           const isPoll = msg.type === 'poll';
           const messageContent = msg.body || msg.text || '';
           const poll = msg.poll;
+          const visibleOptions = (pollVoteState[msg.poll_id] || poll?.options || []);
 
-          return (
-            <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
-              {isPoll ? (
-                <div className="poll-bubble-card" style={pollCardStyle}>
-                  <div style={pollHeaderStyle}>
-                    <span style={{ fontSize: '18px' }}>📊</span>
-                    <h4 style={pollTitleStyle}>{poll?.question || 'Poll'}</h4>
-                  </div>
-
-                  <div style={pollOptionsStyle}>
-                    {(poll?.options || []).map(option => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)}
-                        style={pollOptionStyle}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-                          <span>{option.text}</span>
-                          <strong>{option.votes || 0}</strong>
-                        </div>
-                        {option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="bubble-meta-footer" style={pollFooterStyle}>
-                    <span>Active Voting Room</span>
-                    <span>{msg.time || msg.created_at || 'Just Now'}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className={`message-data-bubble ${isMine ? 'primary-accent' : 'neutral-fallback'}`}>
-                  {msg.reply_to_text && <div className="reply-preview-context"><Reply size={12} /> {msg.reply_to_text}</div>}
-                  <p className="bubble-text-content">{messageContent}</p>
-                  <div className="bubble-meta-footer"><span className="bubble-time">{msg.time || msg.created_at || 'Just Now'}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
-                  <div className="bubble-action-triggers">
-                    <button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>
-                    {isMine && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
+          return <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
+            {isPoll ? <div className="poll-bubble-card" style={pollCardStyle}>
+              <div style={pollHeaderStyle}><span style={{ fontSize: '18px' }}>📊</span><h4 style={pollTitleStyle}>{poll?.question || 'Poll'}</h4></div>
+              <div style={pollOptionsStyle}>
+                {visibleOptions.map(option => <button key={option.id} type="button" onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)} style={pollOptionStyle}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><span>{option.text}</span><strong>{option.votes || 0}</strong></div>
+                  {option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}
+                </button>)}
+              </div>
+              <div className="bubble-meta-footer" style={pollFooterStyle}><span>Active Voting Room</span><span>{msg.time || msg.created_at || 'Just Now'}</span></div>
+            </div> : <div className={`message-data-bubble ${isMine ? 'primary-accent' : 'neutral-fallback'}`}>
+              {msg.reply_to_text && <div className="reply-preview-context"><Reply size={12} /> {msg.reply_to_text}</div>}
+              <p className="bubble-text-content">{messageContent}</p>
+              <div className="bubble-meta-footer"><span className="bubble-time">{msg.time || msg.created_at || 'Just Now'}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
+              <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
+            </div>}
+          </div>;
         })}
       </div>
 
@@ -185,11 +123,10 @@ export default function ChatCanvas({
         </div>
 
         {replyTo || editing ? <div className="context-bar"><div>{editing ? 'Editing Message' : 'Replying to'}: <strong>{(editing || replyTo).body || (editing || replyTo).text}</strong></div><button onClick={() => { setReplyTo(null); setEditing(null); setComposer(''); }}><X size={16}/></button></div> : null}
-
         <div className="message-input-composer-bar">
           <button className="composer-addon-btn">😊</button><button className="composer-addon-btn"><Pin size={18}/></button><button className="composer-addon-btn"><Camera size={18}/></button>
           <input type="text" placeholder={selectedChat ? 'Type a message...' : 'Select a conversation to start messaging'} value={composer} onChange={e => setComposer(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSendMessage()} disabled={!selectedChat} className="composer-text-input" />
-          <button className="voice-mic-submit-btn" onClick={onSendMessage} disabled={!selectedChat}><Send size={18}/></button>
+          <button className="voice-mic-submit-btn" onClick={onSendMessage} disabled={!selectedChat}><Send size={18} /></button>
         </div>
       </div>
     </main>
