@@ -47,7 +47,8 @@ export default function App() {
     const [topInterests, setTopInterests] = useState(['Private Chats', 'Family Group', 'Study Group', 'Technology']);
 
     const auth = (u, t) => {
-        setUser(u); setToken(t);
+        setUser(u);
+        setToken(t);
         localStorage.setItem('cc_user', JSON.stringify(u));
         localStorage.setItem('cc_token', t);
         setScreen('app');
@@ -56,9 +57,20 @@ export default function App() {
     const logout = () => {
         localStorage.removeItem('cc_token');
         localStorage.removeItem('cc_user');
-        setToken(''); setUser(null);
-        setSelectedChat(null); setChats([]); setMessages([]);
+        setToken('');
+        setUser(null);
+        setSelectedChat(null);
+        setChats([]);
+        setMessages([]);
         setScreen('login');
+    };
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setSelectedChat(null);
+        setMessages([]);
+        setSearchQuery('');
+        setChatFilter('all');
     };
 
     useEffect(() => {
@@ -67,17 +79,25 @@ export default function App() {
         let fetchPath = '/chats.php';
         if (activeTab === 'groups') fetchPath = '/chats.php?type=group';
         if (activeTab === 'people') fetchPath = '/users_list.php';
+        if (activeTab === 'chats') fetchPath = '/chats.php?type=private';
 
         let cancelled = false;
         api(fetchPath, { method: 'GET' })
             .then(data => {
                 if (cancelled) return;
+
                 if (data.chats) {
-                    setChats(data.chats);
-                    if (data.chats.length > 0 && !selectedChat) setSelectedChat(data.chats[0]);
+                    const mapped = data.chats.map(chat => ({
+                        ...chat,
+                        id: Number(chat.id),
+                        isGroup: chat.type === 'group'
+                    }));
+                    setChats(mapped);
+                    if (mapped.length > 0) setSelectedChat(prev => prev || mapped[0]);
+                    else setSelectedChat(null);
                 } else if (data.users) {
                     setChats(data.users.map(u => ({
-                        id: u.id,
+                        id: Number(u.id),
                         name: u.name,
                         preview: `@${u.user_id} - Click to start chat`,
                         time: '',
@@ -102,12 +122,13 @@ export default function App() {
     const handleSendMessage = async () => {
         if (!composer.trim() || !selectedChat) return;
         const payload = {
-            chat_id: selectedChat.id, body: composer,
-            reply_to_message_id: replyTo ? replyTo.id : null,
-            editing_id: editing ? editing.id : null
+            chat_id: selectedChat.id,
+            body: composer,
+            reply_to_message_id: replyTo ? replyTo.id : null
         };
         try {
             const targetEndpoint = editing ? '/edit_message.php' : '/messages.php';
+            if (editing) payload.editing_id = editing.id;
             const result = await api(targetEndpoint, { method: 'POST', body: JSON.stringify(payload) });
             if (editing) {
                 setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, body: composer, edited: true } : m));
@@ -115,8 +136,11 @@ export default function App() {
             } else if (result.message) {
                 setMessages(prev => [...prev, result.message]);
             }
-            setComposer(''); setReplyTo(null);
-        } catch (err) { alert(err.message); }
+            setComposer('');
+            setReplyTo(null);
+        } catch (err) {
+            alert(err.message);
+        }
     };
 
     const handleSelectConversationRow = async (selectedRowItem) => {
@@ -131,21 +155,43 @@ export default function App() {
                 method: 'POST',
                 body: JSON.stringify({ type: 'private', target_user_id: selectedRowItem.id })
             });
+
             if (response.chat) {
-                setChats(prev => [response.chat, ...prev.filter(c => c.id !== response.chat.id)]);
-                setSelectedChat(response.chat);
+                const chat = { ...response.chat, id: Number(response.chat.id), isGroup: false };
                 setActiveTab('chats');
+                setChats(prev => [chat, ...prev.filter(c => c.id !== chat.id)]);
+                setSelectedChat(chat);
             }
         } catch (err) {
-            alert(err.message || 'Failed to establish a private channel link.');
+            alert(err.message || 'Failed to establish a private chat.');
         }
     };
 
     const handleGroupCreated = (newChat) => {
         setActiveTab('groups');
-        setSelectedChat(newChat);
         setChats(prev => [newChat, ...prev.filter(c => c.id !== newChat.id)]);
-        setModal(null);
+        setSelectedChat(newChat);
+        setModal('group');
+    };
+
+    const handleDeleteGroup = async (group) => {
+        if (!group?.id) return;
+        const confirmed = window.confirm(`Delete group "${group.name}"? This will remove the group for all members.`);
+        if (!confirmed) return;
+
+        try {
+            await api(`/groups.php?id=${group.id}`, { method: 'DELETE' });
+            setChats(prev => prev.filter(chat => chat.id !== group.id));
+            setSelectedChat(null);
+            setMessages([]);
+        } catch (err) {
+            alert(err.message || 'Unable to delete group.');
+        }
+    };
+
+    const handleGroupInvite = async (group) => {
+        if (!group?.id) return null;
+        return api(`/groups.php?action=invite&id=${group.id}`, { method: 'POST' });
     };
 
     const filteredChats = chats.filter(c => {
@@ -164,23 +210,47 @@ export default function App() {
     return (
         <div className={`app-container ${isDarkMode ? 'dark-theme' : ''} ${isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
             <Sidebar
-                user={user} setModal={setModal} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
-                onLogout={logout} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-                activeTab={activeTab} onTabChange={setActiveTab} setScreen={setScreen}
+                user={user}
+                setModal={setModal}
+                isDarkMode={isDarkMode}
+                setIsDarkMode={setIsDarkMode}
+                onLogout={logout}
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                setScreen={setScreen}
             />
 
             <ChatDirectory
-                searchQuery={searchQuery} setSearchQuery={setSearchQuery} chatFilter={chatFilter}
-                setChatFilter={setChatFilter} filteredChats={filteredChats} selectedChat={selectedChat}
-                setSelectedChat={handleSelectConversationRow} isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen} setModal={setModal} activeTab={activeTab}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                chatFilter={chatFilter}
+                setChatFilter={setChatFilter}
+                filteredChats={filteredChats}
+                selectedChat={selectedChat}
+                setSelectedChat={handleSelectConversationRow}
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                setModal={setModal}
+                activeTab={activeTab}
             />
 
             <ChatCanvas
-                selectedChat={selectedChat} messages={messages} user={user} setModal={setModal}
-                replyTo={replyTo} setReplyTo={setReplyTo} editing={editing} setEditing={setEditing}
-                composer={composer} setComposer={setComposer} onSendMessage={handleSendMessage}
+                selectedChat={selectedChat}
+                messages={messages}
+                user={user}
+                setModal={setModal}
+                replyTo={replyTo}
+                setReplyTo={setReplyTo}
+                editing={editing}
+                setEditing={setEditing}
+                composer={composer}
+                setComposer={setComposer}
+                onSendMessage={handleSendMessage}
                 apiBridge={api}
+                onDeleteGroup={handleDeleteGroup}
+                onGroupInvite={handleGroupInvite}
             />
 
             {modal && (

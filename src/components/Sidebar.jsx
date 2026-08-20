@@ -7,22 +7,13 @@ export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onL
   return (
     <aside className={`main-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-brand">
-        <div className="brand-layout-row">
-          <div className="brand-logo">C</div>
-          <span className="brand-text">CloudComAI</span>
-        </div>
+        <div className="brand-layout-row"><div className="brand-logo">C</div><span className="brand-text">CloudComAI</span></div>
         <button className="sidebar-close-btn" onClick={() => setIsSidebarOpen(false)} aria-label="Close sidebar"><X size={18} /></button>
       </div>
 
       <button className="user-profile-card" onClick={() => setModal('profile')} type="button">
-        <div className="avatar-frame">
-          <div className="avatar-placeholder">{user?.name ? user.name[0] : 'U'}</div>
-          <span className="online-indicator-dot"></span>
-        </div>
-        <div className="user-info">
-          <h4>{user?.name || 'Authorized User'}</h4>
-          <span className="status-badge"><span className="dot online"></span>Online</span>
-        </div>
+        <div className="avatar-frame"><div className="avatar-placeholder">{user?.name ? user.name[0] : 'U'}</div><span className="online-indicator-dot"></span></div>
+        <div className="user-info"><h4>{user?.name || 'Authorized User'}</h4><span className="status-badge"><span className="dot online"></span>Online</span></div>
       </button>
 
       <nav className="sidebar-navigation">
@@ -44,10 +35,8 @@ export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onL
         <div className="store-buttons"><button className="store-btn">Google Play</button><button className="store-btn">App Store</button></div>
       </div>
 
-      <div className="sidebar-footer-toggle">
-        <button className="theme-toggle-btn" onClick={() => setIsDarkMode(!isDarkMode)}>
-          {isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}<span>Theme</span>
-        </button>
+      <div className="sidebar-footer-toggle" style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--bg-sidebar, var(--bg-primary))', borderTop: '1px solid var(--border-color)' }}>
+        <button className="theme-toggle-btn" onClick={() => setIsDarkMode(!isDarkMode)}>{isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}<span>Theme</span></button>
         <button className="logout-btn" onClick={onLogout}>Sign Out</button>
       </div>
     </aside>
