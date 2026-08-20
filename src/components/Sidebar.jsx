@@ -1,0 +1,72 @@
+import React from 'react';
+import { 
+  MessageCircle, Phone, Video, Users, Plus, Camera, 
+  UserCheck, Bookmark, BarChart3, Settings, Sun, Moon,
+  Download, X 
+} from 'lucide-react';
+
+
+export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onLogout, isSidebarOpen, setIsSidebarOpen,activeTab,onTabChange,setScreen  }) {
+    return (
+      <aside className={`main-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-brand">
+          <div className="brand-layout-row">
+            <div className="brand-logo">C</div>
+            <span className="brand-text">CloudComAI</span>
+          </div>
+          {/* Close trigger for mobile overlay view overlays */}
+          <button className="sidebar-close-btn" onClick={() => setIsSidebarOpen(false)}>
+            <X size={18} />
+          </button>
+        </div>
+
+      <div className="user-profile-card">
+        <div className="avatar-frame">
+          <div className="avatar-placeholder">{user?.name ? user.name[0] : 'U'}</div>
+          <span className="online-indicator-dot"></span>
+        </div>
+        <div className="user-info">
+          <h4>{user?.name || 'Authorized User'}</h4>
+          <span className="status-badge"><span className="dot online"></span>Online</span>
+        </div>
+      </div>
+
+      <nav className="sidebar-navigation">
+        <button className="nav-item active"><MessageCircle size={20}/> <span>Chats</span></button>
+        <button className="nav-item" onClick={() => setModal('group')}><Users size={20}/> <span>Groups</span></button>
+        <button className="nav-item"><Phone size={20}/> <span>Calls</span></button>
+        <button className="nav-item"><Camera size={20}/> <span>Status</span></button>
+        <button className="nav-item"><Video size={20}/> <span>Stories</span></button>
+        <button 
+          className={`nav-item ${activeTab === 'people' ? 'active' : ''}`} 
+          onClick={() => onTabChange('people')}
+        >
+          <UserCheck size={20}/> <span>People & Contacts</span>
+        </button>
+        <button className="nav-item"><Bookmark size={20}/> <span>Saved Messages</span></button>
+        <button className="nav-item" onClick={() => setScreen('interests')}>
+            <UserCheck size={20}/> <span>Edit Preferences</span>
+        </button>
+        <button className="nav-item" onClick={() => setModal('poll')}><BarChart3 size={20}/> <span>Polls</span></button>
+        <button className="nav-item"><Settings size={20}/> <span>Settings</span></button>
+      </nav>
+
+      <div className="sidebar-app-promo">
+        <h5>Download App</h5>
+        <p>Get the CloudComAI app on your mobile device.</p>
+        <div className="store-buttons">
+          <button className="store-btn">Google Play</button>
+          <button className="store-btn">App Store</button>
+        </div>
+      </div>
+
+      <div className="sidebar-footer-toggle">
+        <button className="theme-toggle-btn" onClick={() => setIsDarkMode(!isDarkMode)}>
+          {isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}
+          <span>Theme</span>
+        </button>
+        <button className="logout-btn" onClick={onLogout}>Sign Out</button>
+      </div>
+    </aside>
+  );
+}
