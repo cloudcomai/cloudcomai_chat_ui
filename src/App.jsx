@@ -4,12 +4,10 @@ import Sidebar from './components/Sidebar';
 import ChatDirectory from './components/ChatDirectory';
 import ChatCanvas from './components/ChatCanvas';
 import Auth from './components/Auth';
-import { Search, UserCheck } from 'lucide-react';
 import GroupMembershipModal from './components/GroupMembershipModal';
 import GroupCreationModal from './components/GroupCreationModal';
 import InterestsScreen from './components/InterestsScreen';
 import PollModal from './components/PollModal';
-
 
 const API = import.meta.env.VITE_API_BASE_URL || 'https://cloudcomai.com/apiapp/api';
 const groupTypes = ['Family Group', 'Friend Group', 'Fan Group', 'Study Group', 'College Group', 'Class Group', 'Department Group', 'Project Group', 'Club Group', 'Alumni Group', 'Workplace Group', 'Neighborhood Group', 'Event Group', 'Staff Group'];
@@ -45,8 +43,7 @@ export default function App() {
     const [chatFilter, setChatFilter] = useState('all');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('chats'); 
-    
+    const [activeTab, setActiveTab] = useState('chats');
     const [topInterests, setTopInterests] = useState(['Private Chats', 'Family Group', 'Study Group', 'Technology']);
 
     const auth = (u, t) => {
@@ -57,51 +54,50 @@ export default function App() {
     };
 
     const logout = () => {
-        localStorage.clear(); setToken(''); setUser(null);
+        localStorage.removeItem('cc_token');
+        localStorage.removeItem('cc_user');
+        setToken(''); setUser(null);
         setSelectedChat(null); setChats([]); setMessages([]);
         setScreen('login');
     };
 
-    // Pull Active Panel Streams
     useEffect(() => {
         if (!token || screen !== 'app') return;
-        
-        let fetchPath = '/chats.php';
-        if (activeTab === 'groups') fetchPath = '/chats.php?type=group'; 
-        if (activeTab === 'people') fetchPath = '/users_list.php';      
-        
-        setChats([]); 
-        
-        api(fetchPath, { method: 'GET' })
-          .then(data => {
-            if (data.chats) {
-              setChats(data.chats);
-              if (data.chats.length > 0 && !selectedChat) {
-                setSelectedChat(data.chats[0]);
-              }
-            } else if (data.users) {
-              const mappedUsersAsChats = data.users.map(u => ({
-                id: u.id,
-                name: u.name,
-                preview: `@${u.user_id} - Click to start chat`,
-                time: '',
-                unread: 0,
-                isContact: true 
-              }));
-              setChats(mappedUsersAsChats);
-            }
-          })
-          .catch(err => console.error("Error updating active row streams:", err));
-    }, [token, screen, activeTab]); 
 
-    // Pull Message Histories
+        let fetchPath = '/chats.php';
+        if (activeTab === 'groups') fetchPath = '/chats.php?type=group';
+        if (activeTab === 'people') fetchPath = '/users_list.php';
+
+        let cancelled = false;
+        api(fetchPath, { method: 'GET' })
+            .then(data => {
+                if (cancelled) return;
+                if (data.chats) {
+                    setChats(data.chats);
+                    if (data.chats.length > 0 && !selectedChat) setSelectedChat(data.chats[0]);
+                } else if (data.users) {
+                    setChats(data.users.map(u => ({
+                        id: u.id,
+                        name: u.name,
+                        preview: `@${u.user_id} - Click to start chat`,
+                        time: '',
+                        unread: 0,
+                        isContact: true
+                    })));
+                }
+            })
+            .catch(err => console.error('Error updating active row streams:', err));
+
+        return () => { cancelled = true; };
+    }, [token, screen, activeTab]);
+
     useEffect(() => {
         if (!token || !selectedChat || screen !== 'app' || selectedChat.isContact) return;
+        setMessages([]);
         api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' })
             .then(data => { if (data.messages) setMessages(data.messages); })
             .catch(err => console.error(err));
     }, [selectedChat, token, screen]);
-    
 
     const handleSendMessage = async () => {
         if (!composer.trim() || !selectedChat) return;
@@ -125,7 +121,6 @@ export default function App() {
 
     const handleSelectConversationRow = async (selectedRowItem) => {
         if (!selectedRowItem) return;
-
         if (!selectedRowItem.isContact) {
             setSelectedChat(selectedRowItem);
             return;
@@ -134,20 +129,23 @@ export default function App() {
         try {
             const response = await api('/chats.php', {
                 method: 'POST',
-                body: JSON.stringify({
-                    type: 'private',
-                    target_user_id: selectedRowItem.id
-                })
+                body: JSON.stringify({ type: 'private', target_user_id: selectedRowItem.id })
             });
-
             if (response.chat) {
                 setChats(prev => [response.chat, ...prev.filter(c => c.id !== response.chat.id)]);
                 setSelectedChat(response.chat);
-                setActiveTab('chats'); 
+                setActiveTab('chats');
             }
         } catch (err) {
-            alert(err.message || "Failed to establish a private channel link.");
+            alert(err.message || 'Failed to establish a private channel link.');
         }
+    };
+
+    const handleGroupCreated = (newChat) => {
+        setActiveTab('groups');
+        setSelectedChat(newChat);
+        setChats(prev => [newChat, ...prev.filter(c => c.id !== newChat.id)]);
+        setModal(null);
     };
 
     const filteredChats = chats.filter(c => {
@@ -157,98 +155,50 @@ export default function App() {
         return matchesSearch;
     });
 
-    if (screen === 'login' || !token) {
-        return <Auth onAuth={auth} />;
-    }
+    if (screen === 'login' || !token) return <Auth onAuth={auth} apiBridge={api} />;
 
     if (screen === 'interests') {
-        return (
-          <InterestsScreen 
-            interests={interests} 
-            topInterests={topInterests} 
-            setTopInterests={setTopInterests} 
-            saveAndContinue={() => setScreen('app')} 
-          />
-        );
+        return <InterestsScreen interests={interests} topInterests={topInterests} setTopInterests={setTopInterests} saveAndContinue={() => setScreen('app')} />;
     }
 
     return (
         <div className={`app-container ${isDarkMode ? 'dark-theme' : ''} ${isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
-          <Sidebar 
-            user={user} 
-            setModal={setModal} 
-            isDarkMode={isDarkMode} 
-            setIsDarkMode={setIsDarkMode} 
-            onLogout={logout} 
-            isSidebarOpen={isSidebarOpen}
-            setIsSidebarOpen={setIsSidebarOpen}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            setScreen={setScreen}
-          />
-          
-          <ChatDirectory 
-            searchQuery={searchQuery} 
-            setSearchQuery={setSearchQuery} 
-            chatFilter={chatFilter} 
-            setChatFilter={setChatFilter} 
-            filteredChats={filteredChats} 
-            selectedChat={selectedChat} 
-            setSelectedChat={handleSelectConversationRow} 
-            isSidebarOpen={isSidebarOpen}
-            setIsSidebarOpen={setIsSidebarOpen}
-            setModal={setModal}
-            activeTab={activeTab}
-          />
-          
-          <ChatCanvas 
-            selectedChat={selectedChat} 
-            messages={messages} 
-            user={user} 
-            setModal={setModal} 
-            replyTo={replyTo} 
-            setReplyTo={setReplyTo} 
-            editing={editing} 
-            setEditing={setEditing} 
-            composer={composer} 
-            setComposer={setComposer} 
-            onSendMessage={handleSendMessage} 
-          />
+            <Sidebar
+                user={user} setModal={setModal} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
+                onLogout={logout} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
+                activeTab={activeTab} onTabChange={setActiveTab} setScreen={setScreen}
+            />
 
-          {modal && (
-            <div className="modal-backdrop">
-              {modal === 'add_member' || modal === 'manage_members' ? (
-                <GroupMembershipModal type={modal} selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onActionComplete={() => setModal(null)} />
-              ) : modal === 'group' ? (
-                <GroupCreationModal 
-                  groupTypes={groupTypes} 
-                  apiBridge={api} 
-                  close={() => setModal(null)} 
-                  onGroupCreated={(newChat) => {
-                    setChats(prev => [newChat, ...prev]);
-                    setSelectedChat(newChat);
-                    setActiveTab('groups');
-                  }} 
-                />
-              ): modal === 'poll' ? (
-                /* 📊 INSERT REAL POLL LAYER COMPONENT */
-                <PollModal 
-                  selectedChat={selectedChat} 
-                  apiBridge={api} 
-                  close={() => setModal(null)} 
-                  onPollCreated={(pollMessageObject) => {
-                    // Instantly render the new poll message onto your active chat channel screen area
-                    setMessages(prev => [...prev, pollMessageObject]);
-                  }} 
-                />
-              ) : (
-                <div className="modal-content-card">
-                  <h3>Feature Panel ({modal.replace('_', ' ')})</h3>
-                  <button className="primary" onClick={() => setModal(null)}>Dismiss</button>
+            <ChatDirectory
+                searchQuery={searchQuery} setSearchQuery={setSearchQuery} chatFilter={chatFilter}
+                setChatFilter={setChatFilter} filteredChats={filteredChats} selectedChat={selectedChat}
+                setSelectedChat={handleSelectConversationRow} isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen} setModal={setModal} activeTab={activeTab}
+            />
+
+            <ChatCanvas
+                selectedChat={selectedChat} messages={messages} user={user} setModal={setModal}
+                replyTo={replyTo} setReplyTo={setReplyTo} editing={editing} setEditing={setEditing}
+                composer={composer} setComposer={setComposer} onSendMessage={handleSendMessage}
+                apiBridge={api}
+            />
+
+            {modal && (
+                <div className="modal-backdrop">
+                    {modal === 'add_member' || modal === 'manage_members' ? (
+                        <GroupMembershipModal type={modal} selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onActionComplete={() => setModal(null)} />
+                    ) : modal === 'group' ? (
+                        <GroupCreationModal groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupCreated={handleGroupCreated} />
+                    ) : modal === 'poll' ? (
+                        <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => [...prev, pollMessageObject])} />
+                    ) : (
+                        <div className="modal-content-card">
+                            <h3>Feature Panel ({modal.replace('_', ' ')})</h3>
+                            <button className="primary" onClick={() => setModal(null)}>Dismiss</button>
+                        </div>
+                    )}
                 </div>
-              )}
-            </div>
-          )}
+            )}
         </div>
     );
 }
