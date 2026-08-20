@@ -3,16 +3,16 @@ import { X, Plus, Trash2 } from 'lucide-react';
 
 export default function PollModal({ selectedChat, apiBridge, close, onPollCreated }) {
   const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']); // Default starting layout with 2 options
+  const [options, setOptions] = useState(['', '']);
   const [loading, setLoading] = useState(false);
 
   const handleAddOptionField = () => {
-    if (options.length >= 6) return alert("Maximum of 6 poll choices allowed.");
+    if (options.length >= 6) return alert('Maximum of 6 poll choices allowed.');
     setOptions([...options, '']);
   };
 
   const handleRemoveOptionField = (index) => {
-    if (options.length <= 2) return alert("A poll requires at least 2 dynamic choices.");
+    if (options.length <= 2) return alert('A poll requires at least 2 choices.');
     setOptions(options.filter((_, i) => i !== index));
   };
 
@@ -24,20 +24,33 @@ export default function PollModal({ selectedChat, apiBridge, close, onPollCreate
 
   const handleSubmitPoll = async (e) => {
     e.preventDefault();
-    const cleanOptions = options.filter(opt => opt.trim() !== '');
-    if (!question.trim() || cleanOptions.length < 2) {
-      return alert("Provide a clear poll question and at least 2 valid options.");
+
+    if (!selectedChat?.id) {
+      return alert('Select a chat before creating a poll.');
+    }
+
+    const cleanQuestion = question.trim();
+    const cleanOptions = [...new Set(
+      options
+        .map(option => option.trim())
+        .filter(Boolean)
+    )];
+
+    if (!cleanQuestion || cleanOptions.length < 2) {
+      return alert('Provide a clear poll question and at least 2 different options.');
     }
 
     setLoading(true);
     try {
+      const payload = {
+        chat_id: Number(selectedChat.id),
+        question: cleanQuestion,
+        options: cleanOptions
+      };
+
       const response = await apiBridge('/polls.php', {
         method: 'POST',
-        body: JSON.stringify({
-          chat_id: selectedChat.id,
-          question: question.trim(),
-          options: cleanOptions
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.message) {
@@ -45,7 +58,7 @@ export default function PollModal({ selectedChat, apiBridge, close, onPollCreate
       }
       close();
     } catch (err) {
-      alert(err.message || "Failed to broadcast secure poll.");
+      alert(err.message || 'Failed to broadcast secure poll.');
     } finally {
       setLoading(false);
     }
@@ -60,23 +73,23 @@ export default function PollModal({ selectedChat, apiBridge, close, onPollCreate
         </div>
 
         <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Question / Topic</label>
-        <input 
-          required 
-          placeholder="What is your team update today?" 
-          value={question} 
-          onChange={e => setQuestion(e.target.value)} 
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', marginBottom: '14px', background: 'var(--bg-primary)', color: 'var(--text-main)' }} 
+        <input
+          required
+          placeholder="What is your team update today?"
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', marginBottom: '14px', background: 'var(--bg-primary)', color: 'var(--text-main)' }}
         />
 
         <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Response Options</label>
         {options.map((opt, index) => (
           <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-            <input 
+            <input
               required
-              placeholder={`Option ${index + 1}`} 
-              value={opt} 
-              onChange={e => handleOptionChange(index, e.target.value)} 
-              style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--bg-primary)', color: 'var(--text-main)', fontSize: '14px' }} 
+              placeholder={`Option ${index + 1}`}
+              value={opt}
+              onChange={e => handleOptionChange(index, e.target.value)}
+              style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--bg-primary)', color: 'var(--text-main)', fontSize: '14px' }}
             />
             {options.length > 2 && (
               <button type="button" onClick={() => handleRemoveOptionField(index)} style={{ color: '#ef4444', padding: '4px' }}><Trash2 size={16}/></button>
