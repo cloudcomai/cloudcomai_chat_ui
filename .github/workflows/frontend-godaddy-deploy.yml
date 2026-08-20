@@ -15,9 +15,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
       - name: Install Project Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Production Assets
         run: npm run build
@@ -28,6 +29,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/app/
-          dangerous-clean-html: true
+          dangerous-clean-slate: true
