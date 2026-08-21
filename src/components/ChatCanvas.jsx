@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, Link2, Trash2 } from 'lucide-react';
+import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, Pin, X, Send, Link2, Trash2 } from 'lucide-react';
 import { formatMessageTime } from '../utils/messageTime';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
