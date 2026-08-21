@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Phone, Video, Users, BarChart3, MapPin, Search, MoreHorizontal, Reply, Edit3, Plus, Camera, Pin, X, Send, Link2, Trash2 } from 'lucide-react';
+import { formatMessageTime } from '../utils/messageTime';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
 const pollHeaderStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' };
@@ -83,16 +84,17 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
           const messageContent = msg.body || msg.text || '';
           const poll = msg.poll;
           const visibleOptions = pollVoteState[msg.poll_id] || poll?.options || [];
+          const messageTime = formatMessageTime(msg.created_at || msg.timestamp || msg.time);
 
           return <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
             {isPoll ? <div className="poll-bubble-card" style={pollCardStyle}>
               <div style={pollHeaderStyle}><span style={{ fontSize: '18px' }}>📊</span><h4 style={pollTitleStyle}>{poll?.question || 'Poll'}</h4></div>
               <div style={pollOptionsStyle}>{visibleOptions.map(option => <button key={option.id} type="button" onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)} style={pollOptionStyle}><div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><span>{option.text}</span><strong>{option.votes || 0}</strong></div>{option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}</button>)}</div>
-              <div className="bubble-meta-footer" style={pollFooterStyle}><span>Active Voting Room</span><span>{msg.time || msg.created_at || 'Just Now'}</span></div>
+              <div className="bubble-meta-footer" style={pollFooterStyle}><span>Active Voting Room</span><span>{messageTime}</span></div>
             </div> : <div className={`message-data-bubble ${isMine ? 'primary-accent' : 'neutral-fallback'}`}>
               {msg.reply_to_text && <div className="reply-preview-context"><Reply size={12} /> {msg.reply_to_text}</div>}
               <p className="bubble-text-content">{messageContent}</p>
-              <div className="bubble-meta-footer"><span className="bubble-time">{msg.time || msg.created_at || 'Just Now'}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
+              <div className="bubble-meta-footer"><span className="bubble-time">{messageTime}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
               <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
             </div>}
           </div>;
