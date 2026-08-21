@@ -20,7 +20,7 @@ export default function Auth({ onAuth, apiBridge }) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) return setError('Please choose an image file.');
-    if (file.size > 5 * 1024 * 1024) return setError('Profile image must be 5 MB or smaller.');
+    if (file.size > 2 * 1024 * 1024) return setError('Profile image must be 2 MB or smaller.');
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
     setError('');
@@ -86,8 +86,8 @@ export default function Auth({ onAuth, apiBridge }) {
 
         <form onSubmit={submit}>
           {mode === 'register' && <>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
-              <button type="button" onClick={() => fileRef.current?.click()} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Choose profile image">
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 4px' }}>
+              <button type="button" onClick={() => fileRef.current?.click()} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Choose profile image (optional)">
                 <div className="avatar-frame" style={{ width: 82, height: 82, position: 'relative' }}>
                   {avatarPreview ? <img src={avatarPreview} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : <div className="avatar-placeholder" style={{ fontSize: 28 }}>{form.name?.[0] || 'U'}</div>}
                   <span style={{ position: 'absolute', right: -2, bottom: -2, background: 'var(--primary-color)', color: '#fff', width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center' }}><Camera size={15}/></span>
@@ -95,6 +95,7 @@ export default function Auth({ onAuth, apiBridge }) {
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseAvatar} />
             </div>
+            <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-light)', marginBottom: '12px' }}>Profile image (optional, max 2 MB)</div>
             <input required placeholder="Full name" value={form.name} onChange={e => setForm({...form, name:e.target.value})}/>
             <input placeholder="CloudComAI User ID" value={form.user_id} onChange={e => setForm({...form, user_id:e.target.value})}/>
             <input type="date" required value={form.dob} onChange={e => setForm({...form, dob:e.target.value})}/>
