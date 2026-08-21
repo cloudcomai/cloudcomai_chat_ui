@@ -16,7 +16,7 @@ export default function GroupCreationModal({ groupTypes, apiBridge, close, onGro
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) return alert('Please choose an image file.');
-    if (file.size > 5 * 1024 * 1024) return alert('Group image must be 5 MB or smaller.');
+    if (file.size > 2 * 1024 * 1024) return alert('Group image must be 2 MB or smaller.');
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
