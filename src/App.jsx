@@ -6,6 +6,8 @@ import ChatCanvas from './components/ChatCanvas';
 import Auth from './components/Auth';
 import GroupMembershipModal from './components/GroupMembershipModal';
 import GroupCreationModal from './components/GroupCreationModal';
+import GroupEditModal from './components/GroupEditModal';
+import ProfileEditModal from './components/ProfileEditModal';
 import InterestsScreen from './components/InterestsScreen';
 import PollModal from './components/PollModal';
 
@@ -15,10 +17,11 @@ const interests = ['Private Chats', 'Public Chat Rooms', ...groupTypes, 'Communi
 
 async function api(path, options = {}) {
     const token = localStorage.getItem('cc_token');
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const response = await fetch(`${API}${path}`, {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(options.headers || {})
         }
@@ -103,13 +106,9 @@ export default function App() {
                     time: '',
                     unread: 0,
                     online: Boolean(u.online),
+                    image_url: u.image_url,
                     isContact: true
                 })));
-                setSelectedChat(prev => {
-                    if (!prev || !prev.isContact) return prev;
-                    const refreshed = data.users.find(u => Number(u.id) === Number(prev.id));
-                    return refreshed ? { ...prev, online: Boolean(refreshed.online) } : prev;
-                });
             }
         } catch (err) {
             console.error('Unable to refresh conversation list:', err);
@@ -125,62 +124,39 @@ export default function App() {
         };
         run();
         const intervalId = window.setInterval(run, 15000);
-        return () => {
-            cancelled = true;
-            window.clearInterval(intervalId);
-        };
+        return () => { cancelled = true; window.clearInterval(intervalId); };
     }, [refreshConversationList]);
 
     useEffect(() => {
         if (!token || screen !== 'app') return undefined;
-
         let stopped = false;
         const sendHeartbeat = async () => {
-            try {
-                if (!stopped) await api('/heartbeat.php', { method: 'POST' });
-            } catch (err) {
-                console.warn('Presence heartbeat failed:', err);
-            }
+            try { if (!stopped) await api('/heartbeat.php', { method: 'POST' }); }
+            catch (err) { console.warn('Presence heartbeat failed:', err); }
         };
-
         sendHeartbeat();
         const intervalId = window.setInterval(sendHeartbeat, 30000);
-        return () => {
-            stopped = true;
-            window.clearInterval(intervalId);
-        };
+        return () => { stopped = true; window.clearInterval(intervalId); };
     }, [token, screen]);
 
     useEffect(() => {
         if (!token || !selectedChat || screen !== 'app' || selectedChat.isContact) return undefined;
-
         let cancelled = false;
         const refreshMessages = async () => {
             try {
                 const data = await api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' });
                 if (!cancelled && data.messages) setMessages(data.messages);
-            } catch (err) {
-                if (!cancelled) console.error('Unable to refresh messages:', err);
-            }
+            } catch (err) { if (!cancelled) console.error('Unable to refresh messages:', err); }
         };
-
         setMessages([]);
         refreshMessages();
         const intervalId = window.setInterval(refreshMessages, 2000);
-
-        return () => {
-            cancelled = true;
-            window.clearInterval(intervalId);
-        };
+        return () => { cancelled = true; window.clearInterval(intervalId); };
     }, [selectedChat, token, screen]);
 
     const handleSendMessage = async () => {
         if (!composer.trim() || !selectedChat) return;
-        const payload = {
-            chat_id: selectedChat.id,
-            body: composer,
-            reply_to_message_id: replyTo ? replyTo.id : null
-        };
+        const payload = { chat_id: selectedChat.id, body: composer, reply_to_message_id: replyTo ? replyTo.id : null };
         try {
             const targetEndpoint = editing ? '/edit_message.php' : '/messages.php';
             if (editing) payload.editing_id = editing.id;
@@ -188,66 +164,59 @@ export default function App() {
             if (editing) {
                 setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, body: composer, edited: true } : m));
                 setEditing(null);
-            } else if (result.message) {
-                setMessages(prev => [...prev, result.message]);
-            }
+            } else if (result.message) setMessages(prev => [...prev, result.message]);
             setComposer('');
             setReplyTo(null);
             refreshConversationList();
-        } catch (err) {
-            alert(err.message);
-        }
+        } catch (err) { alert(err.message); }
     };
 
     const handleSelectConversationRow = async (selectedRowItem) => {
         if (!selectedRowItem) return;
-        if (!selectedRowItem.isContact) {
-            setSelectedChat(selectedRowItem);
-            return;
-        }
-
+        if (!selectedRowItem.isContact) { setSelectedChat(selectedRowItem); return; }
         try {
-            const response = await api('/chats.php', {
-                method: 'POST',
-                body: JSON.stringify({ type: 'private', target_user_id: selectedRowItem.id })
-            });
-
+            const response = await api('/chats.php', { method: 'POST', body: JSON.stringify({ type: 'private', target_user_id: selectedRowItem.id }) });
             if (response.chat) {
                 const chat = { ...response.chat, id: Number(response.chat.id), isGroup: false };
                 setActiveTab('chats');
                 setChats(prev => [chat, ...prev.filter(c => c.id !== chat.id)]);
                 setSelectedChat(chat);
             }
-        } catch (err) {
-            alert(err.message || 'Failed to establish a private chat.');
-        }
+        } catch (err) { alert(err.message || 'Failed to establish a private chat.'); }
     };
 
     const handleGroupCreated = (newChat) => {
         setActiveTab('groups');
         setChats(prev => [newChat, ...prev.filter(c => c.id !== newChat.id)]);
         setSelectedChat(newChat);
-        setModal('group');
+        setModal(null);
     };
 
     const handleDeleteGroup = async (group) => {
         if (!group?.id) return;
         const confirmed = window.confirm(`Delete group "${group.name}"? This will remove the group for all members.`);
         if (!confirmed) return;
-
         try {
             await api(`/groups.php?id=${group.id}`, { method: 'DELETE' });
             setChats(prev => prev.filter(chat => chat.id !== group.id));
             setSelectedChat(null);
             setMessages([]);
-        } catch (err) {
-            alert(err.message || 'Unable to delete group.');
-        }
+        } catch (err) { alert(err.message || 'Unable to delete group.'); }
     };
 
-    const handleGroupInvite = async (group) => {
+    const handleGroupInvite = async group => {
         if (!group?.id) return null;
         return api(`/groups.php?action=invite&id=${group.id}`, { method: 'POST' });
+    };
+
+    const handleUserUpdated = nextUser => {
+        setUser(prev => ({ ...prev, ...nextUser }));
+        localStorage.setItem('cc_user', JSON.stringify({ ...user, ...nextUser }));
+    };
+
+    const handleGroupUpdated = nextGroup => {
+        setChats(prev => prev.map(chat => chat.id === Number(nextGroup.id) ? { ...chat, ...nextGroup } : chat));
+        setSelectedChat(prev => prev && prev.id === Number(nextGroup.id) ? { ...prev, ...nextGroup } : prev);
     };
 
     const filteredChats = chats.filter(c => {
@@ -258,71 +227,24 @@ export default function App() {
     });
 
     if (screen === 'login' || !token) return <Auth onAuth={auth} apiBridge={api} />;
-
-    if (screen === 'interests') {
-        return <InterestsScreen interests={interests} topInterests={topInterests} setTopInterests={setTopInterests} saveAndContinue={() => setScreen('app')} />;
-    }
+    if (screen === 'interests') return <InterestsScreen interests={interests} topInterests={topInterests} setTopInterests={setTopInterests} saveAndContinue={() => setScreen('app')} />;
 
     return (
         <div className={`app-container ${isDarkMode ? 'dark-theme' : ''} ${isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
-            <Sidebar
-                user={user}
-                setModal={setModal}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
-                onLogout={logout}
-                isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen}
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                setScreen={setScreen}
-            />
+            <Sidebar user={user} setModal={setModal} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLogout={logout} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} activeTab={activeTab} onTabChange={handleTabChange} setScreen={setScreen} />
 
-            <ChatDirectory
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                chatFilter={chatFilter}
-                setChatFilter={setChatFilter}
-                filteredChats={filteredChats}
-                selectedChat={selectedChat}
-                setSelectedChat={handleSelectConversationRow}
-                isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen}
-                setModal={setModal}
-                activeTab={activeTab}
-            />
+            <ChatDirectory searchQuery={searchQuery} setSearchQuery={setSearchQuery} chatFilter={chatFilter} setChatFilter={setChatFilter} filteredChats={filteredChats} selectedChat={selectedChat} setSelectedChat={handleSelectConversationRow} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} setModal={setModal} activeTab={activeTab} />
 
-            <ChatCanvas
-                selectedChat={selectedChat}
-                messages={messages}
-                user={user}
-                setModal={setModal}
-                replyTo={replyTo}
-                setReplyTo={setReplyTo}
-                editing={editing}
-                setEditing={setEditing}
-                composer={composer}
-                setComposer={setComposer}
-                onSendMessage={handleSendMessage}
-                apiBridge={api}
-                onDeleteGroup={handleDeleteGroup}
-                onGroupInvite={handleGroupInvite}
-            />
+            <ChatCanvas selectedChat={selectedChat} messages={messages} user={user} setModal={setModal} replyTo={replyTo} setReplyTo={setReplyTo} editing={editing} setEditing={setEditing} composer={composer} setComposer={setComposer} onSendMessage={handleSendMessage} apiBridge={api} onDeleteGroup={handleDeleteGroup} onGroupInvite={handleGroupInvite} />
 
             {modal && (
                 <div className="modal-backdrop">
-                    {modal === 'add_member' || modal === 'manage_members' ? (
-                        <GroupMembershipModal type={modal} selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onActionComplete={() => setModal(null)} />
-                    ) : modal === 'group' ? (
-                        <GroupCreationModal groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupCreated={handleGroupCreated} />
-                    ) : modal === 'poll' ? (
-                        <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => [...prev, pollMessageObject])} />
-                    ) : (
-                        <div className="modal-content-card">
-                            <h3>Feature Panel ({modal.replace('_', ' ')})</h3>
-                            <button className="primary" onClick={() => setModal(null)}>Dismiss</button>
-                        </div>
-                    )}
+                    {modal === 'add_member' || modal === 'manage_members' ? <GroupMembershipModal type={modal} selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onActionComplete={() => setModal(null)} />
+                    : modal === 'group' ? <GroupCreationModal groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupCreated={handleGroupCreated} />
+                    : modal === 'edit_group' ? <GroupEditModal group={selectedChat} groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupUpdated={handleGroupUpdated} />
+                    : modal === 'profile' ? <ProfileEditModal user={user} apiBridge={api} close={() => setModal(null)} onUserUpdated={handleUserUpdated} />
+                    : modal === 'poll' ? <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => [...prev, pollMessageObject])} />
+                    : <div className="modal-content-card"><h3>Feature Panel ({modal.replace('_', ' ')})</h3><button className="primary" onClick={() => setModal(null)}>Dismiss</button></div>}
                 </div>
             )}
         </div>
