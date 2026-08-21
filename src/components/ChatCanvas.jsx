@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, Link2, Trash2 } from 'lucide-react';
+import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, Link2, Trash2, Pin } from 'lucide-react';
 import { formatMessageTime } from '../utils/messageTime';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
@@ -55,11 +55,10 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
 
         <div className="canvas-action-utilities">
           {/* Audio and video calls are temporarily hidden until their functionality is completed. */}
-          {/* <button className="action-utility-btn" onClick={() => setModal('audio')}><Phone size={18}/><span>Audio Call</span></button> */}
-          {/* <button className="action-utility-btn" onClick={() => setModal('video')}><Video size={18}/><span>Video Call</span></button> */}
+          {/* <button className="action-utility-btn" onClick={() => setModal('audio')}><span>Audio Call</span></button> */}
+          {/* <button className="action-utility-btn" onClick={() => setModal('video')}><span>Video Call</span></button> */}
           <button className="action-utility-btn" onClick={() => setModal('poll')}><BarChart3 size={18}/><span>New Poll</span></button>
           {/* Location sharing is temporarily hidden until its functionality is completed. */}
-          {/* <button className="action-utility-btn" onClick={() => setModal('location')}><MapPin size={18}/><span>Share Location</span></button> */}
 
           {isGroup ? <>
             <button className="action-utility-btn" style={{ color: '#10b981' }} onClick={() => setModal('add_member')}><Plus size={16}/><span>Add Member</span></button>
@@ -106,10 +105,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
       <div className="canvas-bottom-action-tray">
         <div className="shortcut-action-grid">
           {/* Status, Stories, and Live Location shortcuts are temporarily hidden until their functionality is completed. */}
-          {/* <button className="shortcut-action-card green-theme" onClick={() => setModal('status')}><div className="shortcut-icon-circle"><Plus size={18}/></div><div className="shortcut-meta"><h5>Status</h5><p>Share your status</p></div></button> */}
-          {/* <button className="shortcut-action-card purple-theme" onClick={() => setModal('story')}><div className="shortcut-icon-circle"><Camera size={18}/></div><div className="shortcut-meta"><h5>Stories</h5><p>View stories</p></div></button> */}
           <button className="shortcut-action-card yellow-theme" onClick={() => setModal('poll')}><div className="shortcut-icon-circle"><BarChart3 size={18}/></div><div className="shortcut-meta"><h5>Polls</h5><p>Create polls</p></div></button>
-          {/* <button className="shortcut-action-card teal-theme" onClick={() => setModal('location')}><div className="shortcut-icon-circle"><MapPin size={18}/></div><div className="shortcut-meta"><h5>Live Location</h5><p>Share location</p></div></button> */}
         </div>
 
         {replyTo || editing ? <div className="context-bar"><div>{editing ? 'Editing Message' : 'Replying to'}: <strong>{(editing || replyTo).body || (editing || replyTo).text}</strong></div><button onClick={() => { setReplyTo(null); setEditing(null); setComposer(''); }}><X size={16}/></button></div> : null}
