@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './styles.css';
 import Sidebar from './components/Sidebar';
 import ChatDirectory from './components/ChatDirectory';
@@ -73,50 +73,105 @@ export default function App() {
         setChatFilter('all');
     };
 
-    useEffect(() => {
-        if (!token || screen !== 'app') return;
+    const getActiveListPath = useCallback(() => {
+        if (activeTab === 'groups') return '/chats.php?type=group';
+        if (activeTab === 'people') return '/users_list.php';
+        return '/chats.php?type=private';
+    }, [activeTab]);
 
-        let fetchPath = '/chats.php';
-        if (activeTab === 'groups') fetchPath = '/chats.php?type=group';
-        if (activeTab === 'people') fetchPath = '/users_list.php';
-        if (activeTab === 'chats') fetchPath = '/chats.php?type=private';
+    const refreshConversationList = useCallback(async () => {
+        if (!token || screen !== 'app') return;
+        try {
+            const data = await api(getActiveListPath(), { method: 'GET' });
+            if (data.chats) {
+                const mapped = data.chats.map(chat => ({
+                    ...chat,
+                    id: Number(chat.id),
+                    isGroup: chat.type === 'group'
+                }));
+                setChats(mapped);
+                setSelectedChat(prev => {
+                    if (!prev) return mapped[0] || null;
+                    const refreshed = mapped.find(chat => chat.id === Number(prev.id));
+                    return refreshed ? { ...prev, ...refreshed } : prev;
+                });
+            } else if (data.users) {
+                setChats(data.users.map(u => ({
+                    id: Number(u.id),
+                    name: u.name,
+                    preview: `@${u.user_id} - Click to start chat`,
+                    time: '',
+                    unread: 0,
+                    online: Boolean(u.online),
+                    isContact: true
+                })));
+                setSelectedChat(prev => {
+                    if (!prev || !prev.isContact) return prev;
+                    const refreshed = data.users.find(u => Number(u.id) === Number(prev.id));
+                    return refreshed ? { ...prev, online: Boolean(refreshed.online) } : prev;
+                });
+            }
+        } catch (err) {
+            console.error('Unable to refresh conversation list:', err);
+        }
+    }, [getActiveListPath, screen, token]);
+
+    useEffect(() => {
+        if (!token || screen !== 'app') return undefined;
+        let cancelled = false;
+        const run = async () => {
+            if (cancelled) return;
+            await refreshConversationList();
+        };
+        run();
+        const intervalId = window.setInterval(run, 15000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [refreshConversationList]);
+
+    useEffect(() => {
+        if (!token || screen !== 'app') return undefined;
+
+        let stopped = false;
+        const sendHeartbeat = async () => {
+            try {
+                if (!stopped) await api('/heartbeat.php', { method: 'POST' });
+            } catch (err) {
+                console.warn('Presence heartbeat failed:', err);
+            }
+        };
+
+        sendHeartbeat();
+        const intervalId = window.setInterval(sendHeartbeat, 30000);
+        return () => {
+            stopped = true;
+            window.clearInterval(intervalId);
+        };
+    }, [token, screen]);
+
+    useEffect(() => {
+        if (!token || !selectedChat || screen !== 'app' || selectedChat.isContact) return undefined;
 
         let cancelled = false;
-        api(fetchPath, { method: 'GET' })
-            .then(data => {
-                if (cancelled) return;
+        const refreshMessages = async () => {
+            try {
+                const data = await api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' });
+                if (!cancelled && data.messages) setMessages(data.messages);
+            } catch (err) {
+                if (!cancelled) console.error('Unable to refresh messages:', err);
+            }
+        };
 
-                if (data.chats) {
-                    const mapped = data.chats.map(chat => ({
-                        ...chat,
-                        id: Number(chat.id),
-                        isGroup: chat.type === 'group'
-                    }));
-                    setChats(mapped);
-                    if (mapped.length > 0) setSelectedChat(prev => prev || mapped[0]);
-                    else setSelectedChat(null);
-                } else if (data.users) {
-                    setChats(data.users.map(u => ({
-                        id: Number(u.id),
-                        name: u.name,
-                        preview: `@${u.user_id} - Click to start chat`,
-                        time: '',
-                        unread: 0,
-                        isContact: true
-                    })));
-                }
-            })
-            .catch(err => console.error('Error updating active row streams:', err));
-
-        return () => { cancelled = true; };
-    }, [token, screen, activeTab]);
-
-    useEffect(() => {
-        if (!token || !selectedChat || screen !== 'app' || selectedChat.isContact) return;
         setMessages([]);
-        api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' })
-            .then(data => { if (data.messages) setMessages(data.messages); })
-            .catch(err => console.error(err));
+        refreshMessages();
+        const intervalId = window.setInterval(refreshMessages, 2000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
     }, [selectedChat, token, screen]);
 
     const handleSendMessage = async () => {
@@ -138,6 +193,7 @@ export default function App() {
             }
             setComposer('');
             setReplyTo(null);
+            refreshConversationList();
         } catch (err) {
             alert(err.message);
         }
