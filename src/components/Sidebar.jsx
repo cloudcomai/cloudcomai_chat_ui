@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, Phone, Video, Users, UserCheck, Bookmark, BarChart3, Settings, Sun, Moon, X } from 'lucide-react';
+import { MessageCircle, Users, UserCheck, Bookmark, BarChart3, Settings, Sun, Moon, X } from 'lucide-react';
 
 const mediaUrl = (user) => user?.image_url || `https://cloudcomai.com/apiapp/api/media.php?type=user&id=${encodeURIComponent(user?.id || '')}`;
 
@@ -25,8 +25,8 @@ export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onL
       <nav className="sidebar-navigation">
         <button className={`nav-item ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => nav('chats')}><MessageCircle size={20}/><span>Chats</span></button>
         <button className={`nav-item ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => nav('groups')}><Users size={20}/><span>Groups</span></button>
-        <button className="nav-item"><Phone size={20}/><span>Calls</span></button>
-        {/* Status, Stories, and Location are temporarily hidden until their functionality is completed. */}
+        {/* Calls, Status, and Stories are temporarily hidden until their functionality is completed. */}
+        {/* <button className="nav-item"><Phone size={20}/><span>Calls</span></button> */}
         {/* <button className="nav-item"><Camera size={20}/><span>Status</span></button> */}
         {/* <button className="nav-item"><Video size={20}/><span>Stories</span></button> */}
         <button className={`nav-item ${activeTab === 'people' ? 'active' : ''}`} onClick={() => nav('people')}><UserCheck size={20}/><span>People & Contacts</span></button>
