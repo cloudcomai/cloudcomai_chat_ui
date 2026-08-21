@@ -8,6 +8,9 @@ const pollTitleStyle = { fontSize: '14px', fontWeight: '700', color: 'var(--text
 const pollOptionsStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
 const pollOptionStyle = { position: 'relative', background: 'var(--bg-directory)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '13px', cursor: 'pointer', overflow: 'hidden', textAlign: 'left', width: '100%' };
 const pollFooterStyle = { marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-light)' };
+const senderNameStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '5px', paddingLeft: '3px' };
+const replyPreviewStyle = { borderLeft: '3px solid var(--primary-color)', background: 'var(--bg-directory)', borderRadius: '7px', padding: '7px 9px', marginBottom: '8px', fontSize: '11px', lineHeight: '1.35', color: 'var(--text-muted)', maxWidth: '100%' };
+const replySenderStyle = { fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' };
 
 export default function ChatCanvas({ selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing, composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite }) {
   const historyRef = useRef(null);
@@ -86,14 +89,24 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
           const poll = msg.poll;
           const visibleOptions = pollVoteState[msg.poll_id] || poll?.options || [];
           const messageTime = formatMessageTime(msg.created_at || msg.timestamp || msg.time);
+          const senderLabel = isGroup ? (isMine ? 'You' : (msg.sender_name || 'Member')) : null;
 
           return <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
             {isPoll ? <div className="poll-bubble-card" style={pollCardStyle}>
+              {senderLabel && <div style={senderNameStyle}>{senderLabel}</div>}
               <div style={pollHeaderStyle}><span style={{ fontSize: '18px' }}>📊</span><h4 style={pollTitleStyle}>{poll?.question || 'Poll'}</h4></div>
               <div style={pollOptionsStyle}>{visibleOptions.map(option => <button key={option.id} type="button" onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)} style={pollOptionStyle}><div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><span>{option.text}</span><strong>{option.votes || 0}</strong></div>{option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}</button>)}</div>
               <div className="bubble-meta-footer" style={pollFooterStyle}><span>Active Voting Room</span><span>{messageTime}</span></div>
             </div> : <div className={`message-data-bubble ${isMine ? 'primary-accent' : 'neutral-fallback'}`}>
-              {msg.reply_to_text && <div className="reply-preview-context"><Reply size={12} /> {msg.reply_to_text}</div>}
+              {senderLabel && <div style={senderNameStyle}>{senderLabel}</div>}
+              {msg.reply_to_message_id && msg.reply_to_text && <div style={replyPreviewStyle}>
+                <div style={replySenderStyle}><Reply size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{msg.reply_to_sender_name || 'Member'}</div>
+                <div>{msg.reply_to_text}</div>
+              </div>}
+              {msg.reply_to_text && !msg.reply_to_message_id && <div style={replyPreviewStyle}>
+                <div style={replySenderStyle}><Reply size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{msg.reply_to_sender_name || 'Member'}</div>
+                <div>{msg.reply_to_text}</div>
+              </div>}
               <p className="bubble-text-content">{messageContent}</p>
               <div className="bubble-meta-footer"><span className="bubble-time">{messageTime}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
               <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
