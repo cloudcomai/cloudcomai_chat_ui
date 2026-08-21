@@ -33,7 +33,7 @@ export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onL
         <button className="nav-item"><Bookmark size={20}/><span>Saved Messages</span></button>
         <button className="nav-item" onClick={() => setScreen('interests')}><UserCheck size={20}/><span>Edit Preferences</span></button>
         <button className="nav-item" onClick={() => setModal('poll')}><BarChart3 size={20}/><span>Polls</span></button>
-        <button className="nav-item"><Settings size={20}/><span>Settings</span></button>
+        <button className="nav-item" onClick={() => setModal('settings')}><Settings size={20}/><span>Settings</span></button>
       </nav>
 
       <div className="sidebar-app-promo">
