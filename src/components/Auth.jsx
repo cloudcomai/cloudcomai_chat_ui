@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import TermsModal from './TermsModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import { Camera } from 'lucide-react';
 
 export default function Auth({ onAuth, apiBridge }) {
   const [mode, setMode] = useState('login');
@@ -8,11 +9,24 @@ export default function Auth({ onAuth, apiBridge }) {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', mobile: '', user_id: '', password: '', dob: '', gender: 'Male' });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const fileRef = useRef(null);
 
-  const submit = async (e) => {
+  const chooseAvatar = event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return setError('Please choose an image file.');
+    if (file.size > 2 * 1024 * 1024) return setError('Profile image must be 2 MB or smaller.');
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setError('');
+  };
+
+  const submit = async e => {
     e.preventDefault();
     if (mode === 'register' && !acceptedTerms) {
       setError('Please accept the Terms & Conditions and Privacy Policy.');
@@ -29,18 +43,23 @@ export default function Auth({ onAuth, apiBridge }) {
           body: JSON.stringify({ name: form.name, email: form.email, mobile: form.mobile, user_id: form.user_id, password: form.password, dob: form.dob, gender: form.gender })
         });
         if (!response?.user || !response?.token) throw new Error('Invalid response received from server');
-        onAuth(response.user, response.token);
+
+        let nextUser = response.user;
+        localStorage.setItem('cc_token', response.token);
+        if (avatarFile) {
+          const formData = new FormData();
+          formData.append('type', 'user');
+          formData.append('id', String(response.user.id));
+          formData.append('image', avatarFile);
+          const upload = await apiBridge('/media_upload.php', { method: 'POST', body: formData });
+          nextUser = { ...nextUser, image_url: upload.image_url, image_version: upload.updated_at };
+        }
+        onAuth(nextUser, response.token);
       } else if (mode === 'forgot') {
-        response = await apiBridge('/forgot_password.php', {
-          method: 'POST',
-          body: JSON.stringify({ identifier: form.email })
-        });
+        response = await apiBridge('/forgot_password.php', { method: 'POST', body: JSON.stringify({ identifier: form.email }) });
         setSuccess(response?.message || 'If the account exists, password reset instructions have been sent.');
       } else {
-        response = await apiBridge('/login.php', {
-          method: 'POST',
-          body: JSON.stringify({ identifier: form.email, password: form.password })
-        });
+        response = await apiBridge('/login.php', { method: 'POST', body: JSON.stringify({ identifier: form.email, password: form.password }) });
         if (!response?.user || !response?.token) throw new Error('Invalid response received from server');
         onAuth(response.user, response.token);
       }
@@ -54,6 +73,8 @@ export default function Auth({ onAuth, apiBridge }) {
   const switchMode = nextMode => {
     setError('');
     setSuccess('');
+    setAvatarFile(null);
+    setAvatarPreview('');
     setMode(nextMode);
   };
 
@@ -65,6 +86,16 @@ export default function Auth({ onAuth, apiBridge }) {
 
         <form onSubmit={submit}>
           {mode === 'register' && <>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 4px' }}>
+              <button type="button" onClick={() => fileRef.current?.click()} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Choose profile image (optional)">
+                <div className="avatar-frame" style={{ width: 82, height: 82, position: 'relative' }}>
+                  {avatarPreview ? <img src={avatarPreview} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : <div className="avatar-placeholder" style={{ fontSize: 28 }}>{form.name?.[0] || 'U'}</div>}
+                  <span style={{ position: 'absolute', right: -2, bottom: -2, background: 'var(--primary-color)', color: '#fff', width: 28, height: 28, borderRadius: '50%', display: 'grid', placeItems: 'center' }}><Camera size={15}/></span>
+                </div>
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={chooseAvatar} />
+            </div>
+            <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-light)', marginBottom: '12px' }}>Profile image (optional, max 2 MB)</div>
             <input required placeholder="Full name" value={form.name} onChange={e => setForm({...form, name:e.target.value})}/>
             <input placeholder="CloudComAI User ID" value={form.user_id} onChange={e => setForm({...form, user_id:e.target.value})}/>
             <input type="date" required value={form.dob} onChange={e => setForm({...form, dob:e.target.value})}/>

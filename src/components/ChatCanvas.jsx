@@ -1,8 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Phone, Video, Users, BarChart3, MapPin, Search, MoreHorizontal,
-  Reply, Edit3, Plus, Camera, Pin, X, Send, Link2, Trash2
-} from 'lucide-react';
+import { Phone, Video, Users, BarChart3, MapPin, Search, MoreHorizontal, Reply, Edit3, Plus, Camera, Pin, X, Send, Link2, Trash2 } from 'lucide-react';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
 const pollHeaderStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' };
@@ -23,10 +20,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
     requestAnimationFrame(() => { viewport.scrollTop = viewport.scrollHeight; });
   }, [selectedChat?.id, messages.length]);
 
-  useEffect(() => {
-    setGroupActionMessage('');
-    setPollVoteState({});
-  }, [selectedChat?.id]);
+  useEffect(() => { setGroupActionMessage(''); setPollVoteState({}); }, [selectedChat?.id]);
 
   const handleHistoryScroll = () => {
     const viewport = historyRef.current;
@@ -38,16 +32,9 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
   const handleCastVote = async (pollId, optionId) => {
     if (!apiBridge || !pollId || !optionId) return;
     try {
-      const response = await apiBridge('/polls.php?action=vote', {
-        method: 'POST',
-        body: JSON.stringify({ poll_id: Number(pollId), option_id: Number(optionId) })
-      });
-      if (response?.options) {
-        setPollVoteState(prev => ({ ...prev, [pollId]: response.options }));
-      }
-    } catch (err) {
-      alert(err.message || 'Failed to submit vote.');
-    }
+      const response = await apiBridge('/polls.php?action=vote', { method: 'POST', body: JSON.stringify({ poll_id: Number(pollId), option_id: Number(optionId) }) });
+      if (response?.options) setPollVoteState(prev => ({ ...prev, [pollId]: response.options }));
+    } catch (err) { alert(err.message || 'Failed to submit vote.'); }
   };
 
   const isGroup = selectedChat?.type === 'group' || selectedChat?.isGroup;
@@ -58,7 +45,9 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
       <header className="canvas-header-nav">
         {selectedChat ? (
           <div className="active-interlocutor-card">
-            <div className="avatar-frame small"><div className="avatar-placeholder">{selectedChat.name ? selectedChat.name[0] : '?'}</div></div>
+            <div className="avatar-frame small">
+              {selectedChat.image_url ? <img src={`${selectedChat.image_url}&v=${selectedChat.image_version || ''}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : <div className="avatar-placeholder">{selectedChat.name ? selectedChat.name[0] : '?'}</div>}
+            </div>
             <div className="interlocutor-details"><h4>{selectedChat.name}</h4><p className="presence-subtext">{isGroup ? 'Group' : selectedChat.online ? 'Online' : 'Offline'}</p></div>
           </div>
         ) : <div className="active-interlocutor-card"><h4>Select a conversation to begin</h4></div>}
@@ -73,6 +62,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
             <button className="action-utility-btn" style={{ color: '#10b981' }} onClick={() => setModal('add_member')}><Plus size={16}/><span>Add Member</span></button>
             <button className="action-utility-btn" onClick={() => setModal('manage_members')}><Users size={16}/><span>Manage</span></button>
             {isGroupOwner && <>
+              <button className="action-utility-btn" onClick={() => setModal('edit_group')}><Edit3 size={16}/><span>Edit Group</span></button>
               <button className="action-utility-btn" onClick={async () => { try { const response = await onGroupInvite(selectedChat); if (response?.invite_url) { await navigator.clipboard.writeText(response.invite_url); setGroupActionMessage('Group link copied'); setTimeout(() => setGroupActionMessage(''), 1600); } } catch (err) { setGroupActionMessage(err.message || 'Unable to generate group link'); } }}><Link2 size={16}/><span>Copy Link</span></button>
               <button className="action-utility-btn text-red" style={{ color: '#ef4444' }} onClick={() => onDeleteGroup(selectedChat)}><Trash2 size={16}/><span>Delete Group</span></button>
             </>}
@@ -92,17 +82,12 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
           const isPoll = msg.type === 'poll';
           const messageContent = msg.body || msg.text || '';
           const poll = msg.poll;
-          const visibleOptions = (pollVoteState[msg.poll_id] || poll?.options || []);
+          const visibleOptions = pollVoteState[msg.poll_id] || poll?.options || [];
 
           return <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
             {isPoll ? <div className="poll-bubble-card" style={pollCardStyle}>
               <div style={pollHeaderStyle}><span style={{ fontSize: '18px' }}>📊</span><h4 style={pollTitleStyle}>{poll?.question || 'Poll'}</h4></div>
-              <div style={pollOptionsStyle}>
-                {visibleOptions.map(option => <button key={option.id} type="button" onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)} style={pollOptionStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><span>{option.text}</span><strong>{option.votes || 0}</strong></div>
-                  {option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}
-                </button>)}
-              </div>
+              <div style={pollOptionsStyle}>{visibleOptions.map(option => <button key={option.id} type="button" onClick={() => handleCastVote(msg.poll_id || poll?.id, option.id)} style={pollOptionStyle}><div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}><span>{option.text}</span><strong>{option.votes || 0}</strong></div>{option.selected && <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-color)' }}>Your vote</div>}</button>)}</div>
               <div className="bubble-meta-footer" style={pollFooterStyle}><span>Active Voting Room</span><span>{msg.time || msg.created_at || 'Just Now'}</span></div>
             </div> : <div className={`message-data-bubble ${isMine ? 'primary-accent' : 'neutral-fallback'}`}>
               {msg.reply_to_text && <div className="reply-preview-context"><Reply size={12} /> {msg.reply_to_text}</div>}
