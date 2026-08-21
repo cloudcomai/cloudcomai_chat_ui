@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, Video, Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, Camera, Pin, X, Send, Link2, Trash2 } from 'lucide-react';
+import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, Link2, Trash2 } from 'lucide-react';
 import { formatMessageTime } from '../utils/messageTime';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
@@ -54,8 +54,9 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
         ) : <div className="active-interlocutor-card"><h4>Select a conversation to begin</h4></div>}
 
         <div className="canvas-action-utilities">
-          <button className="action-utility-btn" onClick={() => setModal('audio')}><Phone size={18}/><span>Audio Call</span></button>
-          <button className="action-utility-btn" onClick={() => setModal('video')}><Video size={18}/><span>Video Call</span></button>
+          {/* Audio and video calls are temporarily hidden until their functionality is completed. */}
+          {/* <button className="action-utility-btn" onClick={() => setModal('audio')}><Phone size={18}/><span>Audio Call</span></button> */}
+          {/* <button className="action-utility-btn" onClick={() => setModal('video')}><Video size={18}/><span>Video Call</span></button> */}
           <button className="action-utility-btn" onClick={() => setModal('poll')}><BarChart3 size={18}/><span>New Poll</span></button>
           {/* Location sharing is temporarily hidden until its functionality is completed. */}
           {/* <button className="action-utility-btn" onClick={() => setModal('location')}><MapPin size={18}/><span>Share Location</span></button> */}
@@ -113,7 +114,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
 
         {replyTo || editing ? <div className="context-bar"><div>{editing ? 'Editing Message' : 'Replying to'}: <strong>{(editing || replyTo).body || (editing || replyTo).text}</strong></div><button onClick={() => { setReplyTo(null); setEditing(null); setComposer(''); }}><X size={16}/></button></div> : null}
         <div className="message-input-composer-bar">
-          <button className="composer-addon-btn">😊</button><button className="composer-addon-btn"><Pin size={18}/></button><button className="composer-addon-btn"><Camera size={18}/></button>
+          <button className="composer-addon-btn">😊</button><button className="composer-addon-btn"><Pin size={18}/></button><button className="composer-addon-btn"><Send size={18}/></button>
           <input type="text" placeholder={selectedChat ? 'Type a message...' : 'Select a conversation to start messaging'} value={composer} onChange={e => setComposer(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSendMessage()} disabled={!selectedChat} className="composer-text-input" />
           <button className="voice-mic-submit-btn" onClick={onSendMessage} disabled={!selectedChat}><Send size={18} /></button>
         </div>
