@@ -8,6 +8,7 @@ import GroupMembershipModal from './components/GroupMembershipModal';
 import GroupCreationModal from './components/GroupCreationModal';
 import GroupEditModal from './components/GroupEditModal';
 import ProfileEditModal from './components/ProfileEditModal';
+import SettingsPanel from './components/SettingsPanel';
 import InterestsScreen from './components/InterestsScreen';
 import PollModal from './components/PollModal';
 
@@ -243,6 +244,7 @@ export default function App() {
                     : modal === 'group' ? <GroupCreationModal groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupCreated={handleGroupCreated} />
                     : modal === 'edit_group' ? <GroupEditModal group={selectedChat} groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupUpdated={handleGroupUpdated} />
                     : modal === 'profile' ? <ProfileEditModal user={user} apiBridge={api} close={() => setModal(null)} onUserUpdated={handleUserUpdated} />
+                    : modal === 'settings' ? <SettingsPanel user={user} setModal={setModal} onLogout={logout} close={() => setModal(null)} setScreen={setScreen} />
                     : modal === 'poll' ? <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => [...prev, pollMessageObject])} />
                     : <div className="modal-content-card"><h3>Feature Panel ({modal.replace('_', ' ')})</h3><button className="primary" onClick={() => setModal(null)}>Dismiss</button></div>}
                 </div>
