@@ -5,7 +5,12 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
   const displayName = user?.name || 'Authorized User';
   const username = user?.user_id || user?.username || '';
   const email = user?.email || '';
+  const phoneNumber = user?.phone_number || user?.phone || user?.mobile || '';
+  const age = user?.age ?? '';
+  const gender = user?.gender || '';
   const imageUrl = user?.image_url;
+
+  const detailValue = value => value !== '' && value !== null && value !== undefined ? String(value) : 'Not set';
 
   return (
     <div className="modal-backdrop">
@@ -28,6 +33,21 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
             <div style={{ fontWeight: 700, fontSize: '16px' }}>{displayName}</div>
             {username && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>@{username}</div>}
             {email && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginBottom: '14px' }}>
+          <div style={detailCardStyle}>
+            <span style={detailLabelStyle}>Age</span>
+            <strong style={detailValueStyle}>{detailValue(age)}</strong>
+          </div>
+          <div style={detailCardStyle}>
+            <span style={detailLabelStyle}>Gender</span>
+            <strong style={detailValueStyle}>{detailValue(gender)}</strong>
+          </div>
+          <div style={detailCardStyle}>
+            <span style={detailLabelStyle}>Phone Number</span>
+            <strong style={detailValueStyle}>{detailValue(phoneNumber)}</strong>
           </div>
         </div>
 
@@ -94,4 +114,30 @@ const textWrapStyle = {
   gap: '3px',
   flex: 1,
   minWidth: 0
+};
+
+const detailCardStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  padding: '11px 12px',
+  border: '1px solid var(--border-color)',
+  borderRadius: '10px',
+  background: 'var(--bg-primary)',
+  minWidth: 0
+};
+
+const detailLabelStyle = {
+  fontSize: '10px',
+  color: 'var(--text-light)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em'
+};
+
+const detailValueStyle = {
+  fontSize: '13px',
+  color: 'var(--text-main)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
 };
