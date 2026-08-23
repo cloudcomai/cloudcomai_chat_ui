@@ -220,6 +220,17 @@ export default function App() {
         } catch (err) { alert(err.message); }
     };
 
+    const handleAttachmentUploaded = useCallback(message => {
+        if (!message) return;
+        setMessages(prev => {
+            const messageId = Number(message.id || 0);
+            if (messageId) latestMessageIdRef.current = Math.max(latestMessageIdRef.current, messageId);
+            if (messageId && prev.some(item => Number(item.id) === messageId)) return prev;
+            return [...prev, message];
+        });
+        refreshConversationList();
+    }, [refreshConversationList]);
+
     const handleSelectConversationRow = async (selectedRowItem) => {
         if (!selectedRowItem) return;
         if (!selectedRowItem.isContact) { setSelectedChat(selectedRowItem); return; }
@@ -285,7 +296,7 @@ export default function App() {
 
             <ChatDirectory searchQuery={searchQuery} setSearchQuery={setSearchQuery} chatFilter={chatFilter} setChatFilter={setChatFilter} filteredChats={filteredChats} selectedChat={selectedChat} setSelectedChat={handleSelectConversationRow} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} setModal={setModal} activeTab={activeTab} />
 
-            <ChatCanvas selectedChat={selectedChat} messages={messages} user={user} setModal={setModal} replyTo={replyTo} setReplyTo={setReplyTo} editing={editing} setEditing={setEditing} composer={composer} setComposer={setComposer} onSendMessage={handleSendMessage} apiBridge={api} onDeleteGroup={handleDeleteGroup} onGroupInvite={handleGroupInvite} />
+            <ChatCanvas selectedChat={selectedChat} messages={messages} user={user} setModal={setModal} replyTo={replyTo} setReplyTo={setReplyTo} editing={editing} setEditing={setEditing} composer={composer} setComposer={setComposer} onSendMessage={handleSendMessage} apiBridge={api} onDeleteGroup={handleDeleteGroup} onGroupInvite={handleGroupInvite} onAttachmentUploaded={handleAttachmentUploaded} />
 
             {modal && (
                 <div className="modal-backdrop">
