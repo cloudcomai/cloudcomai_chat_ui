@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, Link2, Trash2, Pin } from 'lucide-react';
 import { formatMessageTime } from '../utils/messageTime';
+import AttachmentControls from './AttachmentControls';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
 const pollHeaderStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' };
@@ -12,7 +13,7 @@ const senderNameStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--tex
 const replyPreviewStyle = { borderLeft: '3px solid var(--primary-color)', background: 'var(--bg-directory)', borderRadius: '7px', padding: '7px 9px', marginBottom: '8px', fontSize: '11px', lineHeight: '1.35', color: 'var(--text-muted)', maxWidth: '100%' };
 const replySenderStyle = { fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' };
 
-export default function ChatCanvas({ selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing, composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite }) {
+export default function ChatCanvas({ selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing, composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite, onAttachmentUploaded }) {
   const historyRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
   const [groupActionMessage, setGroupActionMessage] = useState('');
@@ -85,6 +86,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
         {messages.map(msg => {
           const isMine = msg.sender_id == user?.id || msg.user_id == user?.id || msg.mine === true;
           const isPoll = msg.type === 'poll';
+          const isAttachment = msg.type === 'attachment' && msg.attachment;
           const messageContent = msg.body || msg.text || '';
           const poll = msg.poll;
           const visibleOptions = pollVoteState[msg.poll_id] || poll?.options || [];
@@ -107,9 +109,12 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
                 <div style={replySenderStyle}><Reply size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{msg.reply_to_sender_name || 'Member'}</div>
                 <div>{msg.reply_to_text}</div>
               </div>}
-              <p className="bubble-text-content">{messageContent}</p>
+              {isAttachment ? <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                {String(msg.attachment.mime_type || '').startsWith('image/') ? <img src={`${apiBridge ? '' : ''}`} alt="Attachment preview" style={{ display: 'none' }} /> : <span style={{ fontSize: '24px' }}>📎</span>}
+                <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.attachment.name}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{Math.ceil(Number(msg.attachment.file_size || 0) / 1024)} KB · {msg.attachment.download_policy === 'VIEW_ONLY' ? 'View only' : msg.attachment.download_policy === 'ALLOW' ? 'Download allowed' : 'Approval required'}</div></div>
+              </div> : <p className="bubble-text-content">{messageContent}</p>}
               <div className="bubble-meta-footer"><span className="bubble-time">{messageTime}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
-              <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
+              <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && !isAttachment && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
             </div>}
           </div>;
         })}
@@ -123,7 +128,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
 
         {replyTo || editing ? <div className="context-bar"><div>{editing ? 'Editing Message' : 'Replying to'}: <strong>{(editing || replyTo).body || (editing || replyTo).text}</strong></div><button onClick={() => { setReplyTo(null); setEditing(null); setComposer(''); }}><X size={16}/></button></div> : null}
         <div className="message-input-composer-bar">
-          <button className="composer-addon-btn">😊</button><button className="composer-addon-btn"><Pin size={18}/></button><button className="composer-addon-btn"><Send size={18}/></button>
+          <button className="composer-addon-btn">😊</button><AttachmentControls selectedChat={selectedChat} apiBridge={apiBridge} onUploaded={onAttachmentUploaded} /><button className="composer-addon-btn"><Pin size={18}/></button><button className="composer-addon-btn"><Send size={18}/></button>
           <input type="text" placeholder={selectedChat ? 'Type a message...' : 'Select a conversation to start messaging'} value={composer} onChange={e => setComposer(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSendMessage()} disabled={!selectedChat} className="composer-text-input" />
           <button className="voice-mic-submit-btn" onClick={onSendMessage} disabled={!selectedChat}><Send size={18} /></button>
         </div>
