@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, Shield, SlidersHorizontal, LogOut, X, ChevronRight } from 'lucide-react';
 
 export default function SettingsPanel({ user, setModal, onLogout, close, setScreen }) {
@@ -8,7 +8,8 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
   const phoneNumber = user?.phone_number || user?.phone || user?.mobile || '';
   const age = user?.age ?? '';
   const gender = user?.gender || '';
-  const imageUrl = user?.image_url;
+  const imageUrl = user?.image_url || `https://cloudcomai.com/apiapp/api/media.php?type=user&id=${encodeURIComponent(user?.id || '')}`;
+  const [imageFailed, setImageFailed] = useState(false);
 
   const detailValue = value => value !== '' && value !== null && value !== undefined ? String(value) : 'Not set';
 
@@ -27,7 +28,16 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', background: 'var(--bg-directory)', borderRadius: '12px', marginBottom: '14px' }}>
           <div className="avatar-frame" style={{ width: 58, height: 58, flex: '0 0 58px' }}>
-            {imageUrl ? <img src={imageUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : <div className="avatar-placeholder">{displayName[0]}</div>}
+            {!imageFailed ? (
+              <img
+                src={imageUrl}
+                alt="Profile"
+                onError={() => setImageFailed(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              />
+            ) : (
+              <div className="avatar-placeholder">{displayName[0]}</div>
+            )}
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: '16px' }}>{displayName}</div>
