@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './styles.css';
 import Sidebar from './components/Sidebar';
 import ChatDirectory from './components/ChatDirectory';
@@ -49,6 +49,7 @@ export default function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState('chats');
     const [topInterests, setTopInterests] = useState(['Private Chats', 'Family Group', 'Study Group', 'Technology']);
+    const latestMessageIdRef = useRef(0);
 
     const auth = (u, t) => {
         setUser(u);
@@ -66,6 +67,7 @@ export default function App() {
         setSelectedChat(null);
         setChats([]);
         setMessages([]);
+        latestMessageIdRef.current = 0;
         setScreen('login');
     };
 
@@ -73,6 +75,7 @@ export default function App() {
         setActiveTab(tab);
         setSelectedChat(null);
         setMessages([]);
+        latestMessageIdRef.current = 0;
         setSearchQuery('');
         setChatFilter('all');
     };
@@ -143,15 +146,53 @@ export default function App() {
     useEffect(() => {
         if (!token || !selectedChat || screen !== 'app' || selectedChat.isContact) return undefined;
         let cancelled = false;
-        const refreshMessages = async () => {
+        latestMessageIdRef.current = 0;
+        setMessages([]);
+
+        const getMessageId = message => Number(message?.id || 0);
+        const mergeIncomingMessages = incoming => {
+            if (!Array.isArray(incoming) || incoming.length === 0) return;
+
+            setMessages(prev => {
+                const existingIds = new Set(prev.map(getMessageId).filter(Boolean));
+                const additions = incoming
+                    .filter(message => !existingIds.has(getMessageId(message)))
+                    .sort((a, b) => getMessageId(a) - getMessageId(b));
+
+                if (additions.length === 0) return prev;
+
+                const next = [...prev, ...additions];
+                latestMessageIdRef.current = Math.max(latestMessageIdRef.current, ...next.map(getMessageId));
+                return next;
+            });
+        };
+
+        const loadMessages = async () => {
             try {
                 const data = await api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' });
-                if (!cancelled && data.messages) setMessages(data.messages);
-            } catch (err) { if (!cancelled) console.error('Unable to refresh messages:', err); }
+                if (cancelled || !data.messages) return;
+
+                const initialMessages = [...data.messages].sort((a, b) => getMessageId(a) - getMessageId(b));
+                latestMessageIdRef.current = initialMessages.reduce((max, message) => Math.max(max, getMessageId(message)), 0);
+                setMessages(initialMessages);
+            } catch (err) {
+                if (!cancelled) console.error('Unable to load messages:', err);
+            }
         };
-        setMessages([]);
-        refreshMessages();
-        const intervalId = window.setInterval(refreshMessages, 2000);
+
+        const pollForNewMessages = async () => {
+            try {
+                const afterId = latestMessageIdRef.current;
+                const path = `/messages.php?chat_id=${selectedChat.id}&after_id=${afterId}`;
+                const data = await api(path, { method: 'GET' });
+                if (!cancelled) mergeIncomingMessages(data.messages);
+            } catch (err) {
+                if (!cancelled) console.error('Unable to refresh new messages:', err);
+            }
+        };
+
+        loadMessages();
+        const intervalId = window.setInterval(pollForNewMessages, 2000);
         return () => { cancelled = true; window.clearInterval(intervalId); };
     }, [selectedChat, token, screen]);
 
@@ -165,7 +206,14 @@ export default function App() {
             if (editing) {
                 setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, body: composer, edited: true } : m));
                 setEditing(null);
-            } else if (result.message) setMessages(prev => [...prev, result.message]);
+            } else if (result.message) {
+                setMessages(prev => {
+                    const messageId = Number(result.message.id || 0);
+                    latestMessageIdRef.current = Math.max(latestMessageIdRef.current, messageId);
+                    if (prev.some(message => Number(message.id) === messageId)) return prev;
+                    return [...prev, result.message];
+                });
+            }
             setComposer('');
             setReplyTo(null);
             refreshConversationList();
@@ -195,13 +243,14 @@ export default function App() {
 
     const handleDeleteGroup = async (group) => {
         if (!group?.id) return;
-        const confirmed = window.confirm(`Delete group "${group.name}"? This will remove the group for all members.`);
+        const confirmed = window.confirm(`Delete group \"${group.name}\"? This will remove the group for all members.`);
         if (!confirmed) return;
         try {
             await api(`/groups.php?id=${group.id}`, { method: 'DELETE' });
             setChats(prev => prev.filter(chat => chat.id !== group.id));
             setSelectedChat(null);
             setMessages([]);
+            latestMessageIdRef.current = 0;
         } catch (err) { alert(err.message || 'Unable to delete group.'); }
     };
 
@@ -245,7 +294,12 @@ export default function App() {
                     : modal === 'edit_group' ? <GroupEditModal group={selectedChat} groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupUpdated={handleGroupUpdated} />
                     : modal === 'profile' ? <ProfileEditModal user={user} apiBridge={api} close={() => setModal(null)} onUserUpdated={handleUserUpdated} />
                     : modal === 'settings' ? <SettingsPanel user={user} setModal={setModal} onLogout={logout} close={() => setModal(null)} setScreen={setScreen} />
-                    : modal === 'poll' ? <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => [...prev, pollMessageObject])} />
+                    : modal === 'poll' ? <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => {
+                        const messageId = Number(pollMessageObject?.id || 0);
+                        if (messageId) latestMessageIdRef.current = Math.max(latestMessageIdRef.current, messageId);
+                        if (!messageId || !prev.some(message => Number(message.id) === messageId)) return [...prev, pollMessageObject];
+                        return prev;
+                    })} />
                     : <div className="modal-content-card"><h3>Feature Panel ({modal.replace('_', ' ')})</h3><button className="primary" onClick={() => setModal(null)}>Dismiss</button></div>}
                 </div>
             )}
