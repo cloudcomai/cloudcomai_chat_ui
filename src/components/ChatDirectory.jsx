@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 
 const imageUrl = chat => chat?.image_url || `https://cloudcomai.com/apiapp/api/media.php?type=${chat?.isGroup ? 'group' : 'user'}&id=${encodeURIComponent(chat?.isGroup ? chat?.id || '' : chat?.other_user_id || chat?.id || '')}`;
 
 export default function ChatDirectory({ searchQuery, setSearchQuery, chatFilter, setChatFilter, filteredChats, selectedChat, setSelectedChat, isSidebarOpen, setIsSidebarOpen, setModal, activeTab }) {
+  const [failedImages, setFailedImages] = useState({});
+
+  const markImageFailed = id => {
+    setFailedImages(prev => ({ ...prev, [id]: true }));
+  };
+
   return (
     <section className="chats-directory">
       <header className="directory-header">
@@ -23,11 +29,21 @@ export default function ChatDirectory({ searchQuery, setSearchQuery, chatFilter,
       <div className="conversations-scroll-stack">
         {filteredChats.length === 0 ? <div className="empty-state">No conversations found.</div> : filteredChats.map(chat => {
           const src = imageUrl(chat);
+          const imageKey = `${chat.isGroup ? 'group' : 'user'}-${chat.id}`;
+          const imageFailed = Boolean(failedImages[imageKey]);
           return (
             <div key={chat.id} className={`conversation-row-card ${selectedChat?.id === chat.id ? 'selected' : ''}`} onClick={() => setSelectedChat(chat)}>
               <div className="avatar-frame">
-                <img src={`${src}${src.includes('?') ? '&' : '?'}v=${chat.image_version || ''}`} alt="" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                <div className="avatar-placeholder">{chat.name ? chat.name[0] : 'C'}</div>
+                {!imageFailed ? (
+                  <img
+                    src={`${src}${src.includes('?') ? '&' : '?'}v=${chat.image_version || ''}`}
+                    alt=""
+                    onError={() => markImageFailed(imageKey)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  />
+                ) : (
+                  <div className="avatar-placeholder">{chat.name ? chat.name[0] : 'C'}</div>
+                )}
                 {chat.online && <span className="online-indicator-dot"></span>}
               </div>
               <div className="conversation-meta-summary">
