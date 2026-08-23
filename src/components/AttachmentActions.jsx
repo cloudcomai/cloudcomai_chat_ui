@@ -27,9 +27,9 @@ export default function AttachmentActions({ attachment, message, user, apiBridge
     finally { setBusy(false); }
   };
 
-  if (policy === 'ALLOW' || isSender) return <button type="button" className="composer-addon-btn" onClick={download} disabled={busy}>Download</button>;
-  if (policy === 'VIEW_ONLY') return <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>View only</span>;
   if (isSender && attachment.download_request_id && status === 'PENDING') return <span style={{ display: 'inline-flex', gap: '5px' }}><button type="button" className="composer-addon-btn" onClick={() => respond('APPROVED')} disabled={busy}>Approve</button><button type="button" className="composer-addon-btn" onClick={() => respond('DENIED')} disabled={busy}>Deny</button></span>;
+  if (isSender || policy === 'ALLOW') return <button type="button" className="composer-addon-btn" onClick={download} disabled={busy}>Download</button>;
+  if (policy === 'VIEW_ONLY') return <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>View only</span>;
   if (status === 'APPROVED') return <button type="button" className="composer-addon-btn" onClick={download} disabled={busy}>Download</button>;
   if (status === 'PENDING') return <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Download request pending</span>;
   return <button type="button" className="composer-addon-btn" onClick={requestDownload} disabled={busy}>Request download</button>;
