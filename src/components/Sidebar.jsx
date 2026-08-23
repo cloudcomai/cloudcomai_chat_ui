@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageCircle, Users, UserCheck, Bookmark, BarChart3, Settings, Sun, Moon, X } from 'lucide-react';
 
 const mediaUrl = (user) => user?.image_url || `https://cloudcomai.com/apiapp/api/media.php?type=user&id=${encodeURIComponent(user?.id || '')}`;
 
 export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onLogout, isSidebarOpen, setIsSidebarOpen, activeTab, onTabChange, setScreen }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const nav = tab => onTabChange(tab);
 
   return (
@@ -15,8 +16,16 @@ export default function Sidebar({ user, setModal, isDarkMode, setIsDarkMode, onL
 
       <button className="user-profile-card" onClick={() => setModal('profile')} type="button">
         <div className="avatar-frame">
-          <img src={mediaUrl(user)} alt="Profile" onError={e => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-          <div className="avatar-placeholder">{user?.name ? user.name[0] : 'U'}</div>
+          {!imageFailed ? (
+            <img
+              src={mediaUrl(user)}
+              alt="Profile"
+              onError={() => setImageFailed(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+            />
+          ) : (
+            <div className="avatar-placeholder">{user?.name ? user.name[0] : 'U'}</div>
+          )}
           <span className="online-indicator-dot"></span>
         </div>
         <div className="user-info"><h4>{user?.name || 'Authorized User'}</h4><span className="status-badge"><span className="dot online"></span>Online</span></div>
