@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Shield, SlidersHorizontal, LogOut, X, ChevronRight } from 'lucide-react';
+import { User, Shield, SlidersHorizontal, LogOut, X, ChevronRight, Contact } from 'lucide-react';
 
 export default function SettingsPanel({ user, setModal, onLogout, close, setScreen }) {
   const displayName = user?.name || 'Authorized User';
@@ -29,12 +29,7 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', background: 'var(--bg-directory)', borderRadius: '12px', marginBottom: '14px' }}>
           <div className="avatar-frame" style={{ width: 58, height: 58, flex: '0 0 58px' }}>
             {!imageFailed ? (
-              <img
-                src={imageUrl}
-                alt="Profile"
-                onError={() => setImageFailed(true)}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-              />
+              <img src={imageUrl} alt="Profile" onError={() => setImageFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
             ) : (
               <div className="avatar-placeholder">{displayName[0]}</div>
             )}
@@ -47,18 +42,9 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginBottom: '14px' }}>
-          <div style={detailCardStyle}>
-            <span style={detailLabelStyle}>Age</span>
-            <strong style={detailValueStyle}>{detailValue(age)}</strong>
-          </div>
-          <div style={detailCardStyle}>
-            <span style={detailLabelStyle}>Gender</span>
-            <strong style={detailValueStyle}>{detailValue(gender)}</strong>
-          </div>
-          <div style={detailCardStyle}>
-            <span style={detailLabelStyle}>Phone Number</span>
-            <strong style={detailValueStyle}>{detailValue(phoneNumber)}</strong>
-          </div>
+          <div style={detailCardStyle}><span style={detailLabelStyle}>Age</span><strong style={detailValueStyle}>{detailValue(age)}</strong></div>
+          <div style={detailCardStyle}><span style={detailLabelStyle}>Gender</span><strong style={detailValueStyle}>{detailValue(gender)}</strong></div>
+          <div style={detailCardStyle}><span style={detailLabelStyle}>Phone Number</span><strong style={detailValueStyle}>{detailValue(phoneNumber)}</strong></div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -71,6 +57,12 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
           <button type="button" onClick={() => setScreen('interests')} style={rowStyle}>
             <span style={iconWrapStyle}><SlidersHorizontal size={17} /></span>
             <span style={textWrapStyle}><strong>Preferences</strong><small>Manage your interests and personal recommendations</small></span>
+            <ChevronRight size={16} />
+          </button>
+
+          <button type="button" onClick={() => setModal('google_contacts')} style={rowStyle}>
+            <span style={iconWrapStyle}><Contact size={17} /></span>
+            <span style={textWrapStyle}><strong>Google Contacts</strong><small>Connect Google and synchronize your contacts</small></span>
             <ChevronRight size={16} />
           </button>
 
@@ -89,65 +81,10 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
   );
 }
 
-const rowStyle = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  padding: '12px',
-  border: '1px solid var(--border-color)',
-  borderRadius: '10px',
-  background: 'var(--bg-primary)',
-  color: 'var(--text-main)',
-  textAlign: 'left'
-};
-
-const rowStyleNonButton = {
-  ...rowStyle,
-  cursor: 'default'
-};
-
-const iconWrapStyle = {
-  width: '32px',
-  height: '32px',
-  borderRadius: '9px',
-  display: 'grid',
-  placeItems: 'center',
-  background: 'var(--bg-directory)',
-  color: 'var(--primary-color)',
-  flex: '0 0 32px'
-};
-
-const textWrapStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '3px',
-  flex: 1,
-  minWidth: 0
-};
-
-const detailCardStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-  padding: '11px 12px',
-  border: '1px solid var(--border-color)',
-  borderRadius: '10px',
-  background: 'var(--bg-primary)',
-  minWidth: 0
-};
-
-const detailLabelStyle = {
-  fontSize: '10px',
-  color: 'var(--text-light)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em'
-};
-
-const detailValueStyle = {
-  fontSize: '13px',
-  color: 'var(--text-main)',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap'
-};
+const rowStyle = { width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-primary)', color: 'var(--text-main)', textAlign: 'left' };
+const rowStyleNonButton = { ...rowStyle, cursor: 'default' };
+const iconWrapStyle = { width: '32px', height: '32px', borderRadius: '9px', display: 'grid', placeItems: 'center', background: 'var(--bg-directory)', color: 'var(--primary-color)', flex: '0 0 32px' };
+const textWrapStyle = { display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 };
+const detailCardStyle = { display: 'flex', flexDirection: 'column', gap: '4px', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-primary)', minWidth: 0 };
+const detailLabelStyle = { fontSize: '10px', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const detailValueStyle = { fontSize: '13px', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };

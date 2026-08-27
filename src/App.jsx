@@ -9,6 +9,7 @@ import GroupCreationModal from './components/GroupCreationModal';
 import GroupEditModal from './components/GroupEditModal';
 import ProfileEditModal from './components/ProfileEditModal';
 import SettingsPanel from './components/SettingsPanel';
+import GoogleContactsPanel from './components/GoogleContactsPanel';
 import InterestsScreen from './components/InterestsScreen';
 import PollModal from './components/PollModal';
 
@@ -91,11 +92,7 @@ export default function App() {
         try {
             const data = await api(getActiveListPath(), { method: 'GET' });
             if (data.chats) {
-                const mapped = data.chats.map(chat => ({
-                    ...chat,
-                    id: Number(chat.id),
-                    isGroup: chat.type === 'group'
-                }));
+                const mapped = data.chats.map(chat => ({ ...chat, id: Number(chat.id), isGroup: chat.type === 'group' }));
                 setChats(mapped);
                 setSelectedChat(prev => {
                     if (!prev) return mapped[0] || null;
@@ -103,16 +100,7 @@ export default function App() {
                     return refreshed ? { ...prev, ...refreshed } : prev;
                 });
             } else if (data.users) {
-                setChats(data.users.map(u => ({
-                    id: Number(u.id),
-                    name: u.name,
-                    preview: `@${u.user_id} - Click to start chat`,
-                    time: '',
-                    unread: 0,
-                    online: Boolean(u.online),
-                    image_url: u.image_url,
-                    isContact: true
-                })));
+                setChats(data.users.map(u => ({ id: Number(u.id), name: u.name, preview: `@${u.user_id} - Click to start chat`, time: '', unread: 0, online: Boolean(u.online), image_url: u.image_url, isContact: true })));
             }
         } catch (err) {
             console.error('Unable to refresh conversation list:', err);
@@ -122,10 +110,7 @@ export default function App() {
     useEffect(() => {
         if (!token || screen !== 'app') return undefined;
         let cancelled = false;
-        const run = async () => {
-            if (cancelled) return;
-            await refreshConversationList();
-        };
+        const run = async () => { if (!cancelled) await refreshConversationList(); };
         run();
         const intervalId = window.setInterval(run, 15000);
         return () => { cancelled = true; window.clearInterval(intervalId); };
@@ -152,15 +137,10 @@ export default function App() {
         const getMessageId = message => Number(message?.id || 0);
         const mergeIncomingMessages = incoming => {
             if (!Array.isArray(incoming) || incoming.length === 0) return;
-
             setMessages(prev => {
                 const existingIds = new Set(prev.map(getMessageId).filter(Boolean));
-                const additions = incoming
-                    .filter(message => !existingIds.has(getMessageId(message)))
-                    .sort((a, b) => getMessageId(a) - getMessageId(b));
-
+                const additions = incoming.filter(message => !existingIds.has(getMessageId(message))).sort((a, b) => getMessageId(a) - getMessageId(b));
                 if (additions.length === 0) return prev;
-
                 const next = [...prev, ...additions];
                 latestMessageIdRef.current = Math.max(latestMessageIdRef.current, ...next.map(getMessageId));
                 return next;
@@ -171,24 +151,18 @@ export default function App() {
             try {
                 const data = await api(`/messages.php?chat_id=${selectedChat.id}`, { method: 'GET' });
                 if (cancelled || !data.messages) return;
-
                 const initialMessages = [...data.messages].sort((a, b) => getMessageId(a) - getMessageId(b));
                 latestMessageIdRef.current = initialMessages.reduce((max, message) => Math.max(max, getMessageId(message)), 0);
                 setMessages(initialMessages);
-            } catch (err) {
-                if (!cancelled) console.error('Unable to load messages:', err);
-            }
+            } catch (err) { if (!cancelled) console.error('Unable to load messages:', err); }
         };
 
         const pollForNewMessages = async () => {
             try {
                 const afterId = latestMessageIdRef.current;
-                const path = `/messages.php?chat_id=${selectedChat.id}&after_id=${afterId}`;
-                const data = await api(path, { method: 'GET' });
+                const data = await api(`/messages.php?chat_id=${selectedChat.id}&after_id=${afterId}`, { method: 'GET' });
                 if (!cancelled) mergeIncomingMessages(data.messages);
-            } catch (err) {
-                if (!cancelled) console.error('Unable to refresh new messages:', err);
-            }
+            } catch (err) { if (!cancelled) console.error('Unable to refresh new messages:', err); }
         };
 
         loadMessages();
@@ -304,7 +278,8 @@ export default function App() {
                     : modal === 'group' ? <GroupCreationModal groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupCreated={handleGroupCreated} />
                     : modal === 'edit_group' ? <GroupEditModal group={selectedChat} groupTypes={groupTypes} apiBridge={api} close={() => setModal(null)} onGroupUpdated={handleGroupUpdated} />
                     : modal === 'profile' ? <ProfileEditModal user={user} apiBridge={api} close={() => setModal(null)} onUserUpdated={handleUserUpdated} />
-                    : modal === 'settings' ? <SettingsPanel user={user} setModal={setModal} onLogout={logout} close={() => setModal(null)} setScreen={setScreen} />
+                    : modal === 'settings' ? <SettingsPanel user={user} setModal={setModal} onLogout={logout} close={() => setModal(null)} setScreen={setScreen} apiBridge={api} />
+                    : modal === 'google_contacts' ? <GoogleContactsPanel apiBridge={api} close={() => setModal(null)} />
                     : modal === 'poll' ? <PollModal selectedChat={selectedChat} apiBridge={api} close={() => setModal(null)} onPollCreated={pollMessageObject => setMessages(prev => {
                         const messageId = Number(pollMessageObject?.id || 0);
                         if (messageId) latestMessageIdRef.current = Math.max(latestMessageIdRef.current, messageId);
