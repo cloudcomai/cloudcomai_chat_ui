@@ -23,6 +23,7 @@ jobs:
         run: npm run build
 
       - name: Sync React Build to GoDaddy via FTP
+        id: ftp-deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -31,3 +32,79 @@ jobs:
           local-dir: ./dist/
           server-dir: /public_html/app/
           dangerous-clean-html: true
+
+      - name: Collect deployment failure diagnostics
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set +e
+          LOG_FILE="deployment-failure.log"
+
+          {
+            echo "============================================================"
+            echo "CloudComAI Frontend Deployment Failure Diagnostics"
+            echo "============================================================"
+            echo "Timestamp (UTC): $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "Workflow: ${GITHUB_WORKFLOW}"
+            echo "Run ID: ${GITHUB_RUN_ID}"
+            echo "Run Number: ${GITHUB_RUN_NUMBER}"
+            echo "Repository: ${GITHUB_REPOSITORY}"
+            echo "Branch/Ref: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Actor: ${GITHUB_ACTOR}"
+            echo
+            echo "-------------------- Tool Versions -------------------------"
+            node --version
+            npm --version
+            git --version
+            echo
+            echo "-------------------- Working Directory ---------------------"
+            pwd
+            echo
+            echo "-------------------- Disk Usage -----------------------------"
+            df -h
+            echo
+            echo "-------------------- Build Output ---------------------------"
+            if [ -d ./dist ]; then
+              echo "dist directory exists"
+              find ./dist -maxdepth 3 -type f -printf '%p (%s bytes)\n' | sort
+              echo
+              echo "dist total size:"
+              du -sh ./dist
+            else
+              echo "ERROR: ./dist directory does not exist."
+            fi
+            echo
+            echo "-------------------- Package Information -------------------"
+            if [ -f package.json ]; then
+              node -e "const p=require('./package.json'); console.log(JSON.stringify({name:p.name,version:p.version,scripts:p.scripts},null,2))"
+            else
+              echo "ERROR: package.json does not exist."
+            fi
+            echo
+            echo "-------------------- Git Status ----------------------------"
+            git status --short --branch
+            echo
+            echo "-------------------- Recent Commit -------------------------"
+            git log -1 --oneline --decorate
+            echo
+            echo "-------------------- Deployment Notes ----------------------"
+            echo "The FTP server, username, and password are intentionally NOT logged."
+            echo "Check the failed step immediately above this diagnostics step for the FTP action error."
+            echo "If the FTP action failed, verify FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP protocol/port, and GoDaddy FTP availability."
+            echo "If build/install failed, this step records the repository and build environment for troubleshooting."
+            echo "============================================================"
+          } 2>&1 | tee "$LOG_FILE"
+
+          echo "::group::Deployment failure diagnostics"
+          cat "$LOG_FILE"
+          echo "::endgroup::"
+
+      - name: Upload deployment failure log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-failure-log-${{ github.run_number }}
+          path: deployment-failure.log
+          if-no-files-found: warn
+          retention-days: 14
