@@ -18,7 +18,6 @@ const ACCEPT = [
 
 export default function AttachmentControls({ selectedChat, apiBridge, onUploaded }) {
   const inputRef = useRef(null);
-  const [policy, setPolicy] = useState('APPROVAL_REQUIRED');
   const [busy, setBusy] = useState(false);
 
   const openPicker = () => {
@@ -48,7 +47,9 @@ export default function AttachmentControls({ selectedChat, apiBridge, onUploaded
       const form = new FormData();
       form.append('chat_id', String(selectedChat.id));
       form.append('file', file);
-      form.append('download_policy', policy);
+      // Attachments are protected by sender approval by default. The approval
+      // action is handled inside the message bubble, not in the composer.
+      form.append('download_policy', 'APPROVAL_REQUIRED');
 
       const result = await apiBridge('/upload_attachment.php', {
         method: 'POST',
@@ -79,19 +80,6 @@ export default function AttachmentControls({ selectedChat, apiBridge, onUploaded
       >
         {busy ? '…' : '📎'}
       </button>
-
-      <select
-        className="attachment-policy-select"
-        value={policy}
-        onChange={e => setPolicy(e.target.value)}
-        disabled={!selectedChat || busy}
-        title="Download permission"
-        aria-label="Attachment download permission"
-      >
-        <option value="APPROVAL_REQUIRED">🔒 Approval</option>
-        <option value="ALLOW">⬇ Allow download</option>
-        <option value="VIEW_ONLY">👁 View only</option>
-      </select>
 
       <input
         ref={inputRef}

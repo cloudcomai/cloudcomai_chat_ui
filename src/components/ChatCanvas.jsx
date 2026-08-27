@@ -3,6 +3,7 @@ import { Users, BarChart3, Search, MoreHorizontal, Reply, Edit3, Plus, X, Send, 
 import { formatMessageTime } from '../utils/messageTime';
 import AttachmentControls from './AttachmentControls';
 import AttachmentActions from './AttachmentActions';
+import AttachmentPreview from './AttachmentPreview';
 
 const pollCardStyle = { background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '16px', minWidth: '280px', maxWidth: '70%', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '4px' };
 const pollHeaderStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' };
@@ -13,6 +14,12 @@ const pollFooterStyle = { marginTop: '10px', display: 'flex', justifyContent: 's
 const senderNameStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '5px', paddingLeft: '3px' };
 const replyPreviewStyle = { borderLeft: '3px solid var(--primary-color)', background: 'var(--bg-directory)', borderRadius: '7px', padding: '7px 9px', marginBottom: '8px', fontSize: '11px', lineHeight: '1.35', color: 'var(--text-muted)', maxWidth: '100%' };
 const replySenderStyle = { fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' };
+const attachmentMessageStyle = { display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '220px', maxWidth: '360px' };
+const attachmentActionRowStyle = { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: '28px' };
+const attachmentMetaStyle = { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 };
+const attachmentIconStyle = { fontSize: '24px', flex: '0 0 auto' };
+const attachmentNameStyle = { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+const attachmentDetailsStyle = { fontSize: '11px', color: 'var(--text-muted)' };
 
 export default function ChatCanvas({ selectedChat, messages, user, setModal, replyTo, setReplyTo, editing, setEditing, composer, setComposer, onSendMessage, apiBridge, onDeleteGroup, onGroupInvite, onAttachmentUploaded }) {
   const historyRef = useRef(null);
@@ -93,6 +100,7 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
           const visibleOptions = pollVoteState[msg.poll_id] || poll?.options || [];
           const messageTime = formatMessageTime(msg.created_at || msg.timestamp || msg.time);
           const senderLabel = isGroup ? (isMine ? 'You' : (msg.sender_name || 'Member')) : null;
+          const attachmentIsImage = isAttachment && String(msg.attachment.mime_type || '').startsWith('image/');
 
           return <div key={msg.id} className={`message-bubble-wrapper ${isMine ? 'outgoing-align' : 'incoming-align'}`}>
             {isPoll ? <div className="poll-bubble-card" style={pollCardStyle}>
@@ -110,10 +118,22 @@ export default function ChatCanvas({ selectedChat, messages, user, setModal, rep
                 <div style={replySenderStyle}><Reply size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{msg.reply_to_sender_name || 'Member'}</div>
                 <div>{msg.reply_to_text}</div>
               </div>}
-              {isAttachment ? <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
-                {String(msg.attachment.mime_type || '').startsWith('image/') ? <img src={`${apiBridge ? '' : ''}`} alt="Attachment preview" style={{ display: 'none' }} /> : <span style={{ fontSize: '24px' }}>📎</span>}
-                <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.attachment.name}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{Math.ceil(Number(msg.attachment.file_size || 0) / 1024)} KB · {msg.attachment.download_policy === 'VIEW_ONLY' ? 'View only' : msg.attachment.download_policy === 'ALLOW' ? 'Download allowed' : 'Approval required'}</div></div>
-                <AttachmentActions attachment={msg.attachment} message={msg} user={user} apiBridge={apiBridge} />
+              {isAttachment ? <div style={attachmentMessageStyle}>
+                <div style={attachmentActionRowStyle}>
+                  <AttachmentActions attachment={msg.attachment} message={msg} user={user} apiBridge={apiBridge} />
+                </div>
+
+                {attachmentIsImage && <AttachmentPreview attachment={msg.attachment} />}
+
+                <div style={attachmentMetaStyle}>
+                  {!attachmentIsImage && <span style={attachmentIconStyle}>📎</span>}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={attachmentNameStyle}>{msg.attachment.name}</div>
+                    <div style={attachmentDetailsStyle}>
+                      {Math.ceil(Number(msg.attachment.file_size || 0) / 1024)} KB · {msg.attachment.download_policy === 'VIEW_ONLY' ? 'View only' : msg.attachment.download_policy === 'ALLOW' ? 'Download allowed' : 'Approval required'}
+                    </div>
+                  </div>
+                </div>
               </div> : <p className="bubble-text-content">{messageContent}</p>}
               <div className="bubble-meta-footer"><span className="bubble-time">{messageTime}</span>{msg.edited && <span className="edited-flag">· Edited</span>}</div>
               <div className="bubble-action-triggers"><button onClick={() => setReplyTo(msg)} title="Reply"><Reply size={12} /></button>{isMine && !isAttachment && <button onClick={() => { setEditing(msg); setComposer(messageContent); }} title="Edit"><Edit3 size={12} /></button>}</div>
