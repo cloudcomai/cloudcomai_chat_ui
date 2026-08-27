@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { User, Shield, SlidersHorizontal, LogOut, X, ChevronRight } from 'lucide-react';
+import { User, Shield, SlidersHorizontal, LogOut, X, ChevronRight, Contact } from 'lucide-react';
+import GoogleContactsPanel from './GoogleContactsPanel';
 
-export default function SettingsPanel({ user, setModal, onLogout, close, setScreen }) {
+export default function SettingsPanel({ user, setModal, onLogout, close, setScreen, apiBridge }) {
   const displayName = user?.name || 'Authorized User';
   const username = user?.user_id || user?.username || '';
   const email = user?.email || '';
@@ -12,6 +13,10 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
   const [imageFailed, setImageFailed] = useState(false);
 
   const detailValue = value => value !== '' && value !== null && value !== undefined ? String(value) : 'Not set';
+
+  if (setModal && window.__cloudcomaiGoogleContactsOpen) {
+    window.__cloudcomaiGoogleContactsOpen = false;
+  }
 
   return (
     <div className="modal-backdrop">
@@ -71,6 +76,12 @@ export default function SettingsPanel({ user, setModal, onLogout, close, setScre
           <button type="button" onClick={() => setScreen('interests')} style={rowStyle}>
             <span style={iconWrapStyle}><SlidersHorizontal size={17} /></span>
             <span style={textWrapStyle}><strong>Preferences</strong><small>Manage your interests and personal recommendations</small></span>
+            <ChevronRight size={16} />
+          </button>
+
+          <button type="button" onClick={() => setModal('google_contacts')} style={rowStyle}>
+            <span style={iconWrapStyle}><Contact size={17} /></span>
+            <span style={textWrapStyle}><strong>Google Contacts</strong><small>Connect Google and synchronize your contacts</small></span>
             <ChevronRight size={16} />
           </button>
 
