@@ -1866,3 +1866,40 @@ select {
     }
   }
   
+
+/* Attachment controls in the message composer */
+.attachment-control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.attachment-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 18px;
+  opacity: 1;
+  visibility: visible;
+}
+
+.attachment-picker-btn:disabled {
+  opacity: 0.45;
+}
+
+.attachment-policy-select {
+  width: 86px;
+  max-width: 86px;
+  height: 30px;
+  padding: 2px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
