@@ -4,7 +4,10 @@ import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { Camera } from 'lucide-react';
 
 export default function Auth({ onAuth, apiBridge }) {
-  const [mode, setMode] = useState('login');
+  const initialResetToken = new URLSearchParams(window.location.search).get('reset_token') || '';
+  const [mode, setMode] = useState(initialResetToken ? 'reset' : 'login');
+  const [resetToken, setResetToken] = useState(initialResetToken);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -58,6 +61,20 @@ export default function Auth({ onAuth, apiBridge }) {
       } else if (mode === 'forgot') {
         response = await apiBridge('/forgot_password.php', { method: 'POST', body: JSON.stringify({ identifier: form.email }) });
         setSuccess(response?.message || 'If the account exists, password reset instructions have been sent.');
+      } else if (mode === 'reset') {
+        if (!resetToken) throw new Error('This password reset link is missing or invalid.');
+        if (form.password.length < 8) throw new Error('Password must be at least 8 characters.');
+        if (form.password !== confirmPassword) throw new Error('Passwords do not match.');
+        response = await apiBridge('/reset_password.php', {
+          method: 'POST',
+          body: JSON.stringify({ token: resetToken, password: form.password })
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setResetToken('');
+        setConfirmPassword('');
+        setForm(prev => ({ ...prev, password: '' }));
+        setMode('login');
+        setSuccess(response?.message || 'Password has been reset successfully. You can now sign in.');
       } else {
         response = await apiBridge('/login.php', { method: 'POST', body: JSON.stringify({ identifier: form.email, password: form.password }) });
         if (!response?.user || !response?.token) throw new Error('Invalid response received from server');
@@ -75,6 +92,7 @@ export default function Auth({ onAuth, apiBridge }) {
     setSuccess('');
     setAvatarFile(null);
     setAvatarPreview('');
+    setConfirmPassword('');
     setMode(nextMode);
   };
 
@@ -82,7 +100,7 @@ export default function Auth({ onAuth, apiBridge }) {
     <div className="auth-page">
       <div className="auth-card">
         <div className="brand center"><div className="logo">C</div><div><strong>CloudComAI</strong><small>Secure Messenger</small></div></div>
-        <h1>{mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create your account' : 'Reset your password'}</h1>
+        <h1>{mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Choose a new password'}</h1>
 
         <form onSubmit={submit}>
           {mode === 'register' && <>
@@ -103,8 +121,12 @@ export default function Auth({ onAuth, apiBridge }) {
             <input required placeholder="Mobile number" value={form.mobile} onChange={e => setForm({...form, mobile:e.target.value})}/>
           </>}
 
-          <input required placeholder={mode === 'forgot' ? 'Registered email, mobile or User ID' : 'Email, mobile or User ID'} value={form.email} onChange={e => setForm({...form, email:e.target.value})}/>
-          {mode !== 'forgot' && <input required type="password" placeholder="Password" value={form.password} onChange={e => setForm({...form, password:e.target.value})}/>} 
+          {mode !== 'reset' && <input required placeholder={mode === 'forgot' ? 'Registered email, mobile or User ID' : 'Email, mobile or User ID'} value={form.email} onChange={e => setForm({...form, email:e.target.value})}/>} 
+          {(mode === 'login' || mode === 'register') && <input required type="password" placeholder="Password" value={form.password} onChange={e => setForm({...form, password:e.target.value})}/>} 
+          {mode === 'reset' && <>
+            <input required type="password" minLength="8" placeholder="New password" value={form.password} onChange={e => setForm({...form, password:e.target.value})}/>
+            <input required type="password" minLength="8" placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}/>
+          </>}
 
           {mode === 'register' && <div className="terms-checkbox"><label>
             <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)}/>
@@ -113,12 +135,13 @@ export default function Auth({ onAuth, apiBridge }) {
 
           {error && <div className="error">{error}</div>}
           {success && <div className="success">{success}</div>}
-          <button type="submit" className="primary wide" disabled={loading}>{loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Register' : 'Send Reset Instructions'}</button>
+          <button type="submit" className="primary wide" disabled={loading}>{loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Register' : mode === 'forgot' ? 'Send Reset Instructions' : 'Update Password'}</button>
         </form>
 
         {mode === 'login' && <button type="button" className="link" onClick={() => switchMode('forgot')}>Forgot Password?</button>}
         {mode === 'forgot' && <button type="button" className="link" onClick={() => switchMode('login')}>Back to Sign In</button>}
-        {mode !== 'forgot' && <button type="button" className="link" onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}>{mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}</button>}
+        {mode === 'reset' && <button type="button" className="link" onClick={() => switchMode('login')}>Back to Sign In</button>}
+        {mode !== 'forgot' && mode !== 'reset' && <button type="button" className="link" onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}>{mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}</button>}
 
         {showTerms && <TermsModal onClose={() => setShowTerms(false)}/>} 
         {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)}/>} 
